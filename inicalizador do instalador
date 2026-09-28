@@ -1,0 +1,2 @@
+javac -encoding UTF-8 InstaladorBCraftOS.java
+java InstaladorBCraftOS
