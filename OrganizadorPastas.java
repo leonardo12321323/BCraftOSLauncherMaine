@@ -20,6 +20,7 @@ import java.nio.file.StandardCopyOption;
  *   │   ├── Fabric/
  *   │   └── NeoForge/
  *   ├── usuarios/
+ *   ├── cache-normal/            <- criada só quando você usa o Modo normal
  *   ├── ATUALIZE-OS-ARQUIVOS.txt
  *   └── COMO-USAR.txt
  *
@@ -178,13 +179,15 @@ public class OrganizadorPastas {
 				"  src/BCraftOSproject1/",
 				"    BCraftOS1/         -> BCraftOS1.java, CatalogoVersoes.java, GerenciadorDownloads.java,",
 				"                          GerenciadorVersoes.java, GerenciadorModpacks.java,",
-				"                          MinecraftLauncher.java, OrganizadorPastas.java",
+				"                          MinecraftLauncher.java, OrganizadorPastas.java,",
+				"                          ModoNormal.java, MiniJson.java",
 				"    BCraftOS1login/    -> BCraftOS1login.java, InfoUsuarios.java",
 				"  versoes/                         (criada sozinha, com uma pasta por loader)",
 				"    Forge/",
 				"    Fabric/",
 				"    NeoForge/",
 				"  usuarios/                        (criada sozinha; uma pasta por conta)",
+				"  cache-normal/                    (criada no Modo normal; Minecraft e Forge compartilhados)",
 				"",
 				"DEPOIS DE BAIXAR UMA VERSÃO NO LAUNCHER, ela aparece assim:",
 				"",
@@ -198,6 +201,11 @@ public class OrganizadorPastas {
 				"      21.1.72/",
 				"        MDK-21.1.72-NeoForge/",
 				"        modpacks/",
+				"",
+				"VERSOES POR CONTA:",
+				"  A conta Bw1_1Bw usa versoes/<Loader>/<versao>/ (como sempre).",
+				"  As outras contas usam versoes/contas/<Conta>/<Loader>/<versao>/.",
+				"  Cada conta so ve e joga as versoes que ela mesma baixou.",
 				"",
 				"ONDE COLOCAR SEUS MODS:",
 				"  versoes/<Loader>/<versão>/modpacks/<nome do modpack>/*.jar",

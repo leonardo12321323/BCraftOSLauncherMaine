@@ -16,6 +16,7 @@ import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -64,6 +65,7 @@ public class BCraftOS1 {
 	private static JProgressBar barraProgresso;
 	private static JButton botaoBaixar;
 	private static JButton botaoJogar;
+	private static JCheckBox checkModoNormal;
 
 	private static CatalogoVersoes.ItemVersao versaoSelecionada;
 	private static boolean baixando;
@@ -201,10 +203,22 @@ public class BCraftOS1 {
 		c.insets = new Insets(0, 0, 20, 0);
 		painel.add(statusModpack, c);
 
+		checkModoNormal = new JCheckBox("Modo normal (para mods de jogo e ghost clients)");
+		checkModoNormal.setFont(new Font("Arial", Font.PLAIN, 12));
+		checkModoNormal.setForeground(Color.WHITE);
+		checkModoNormal.setOpaque(false);
+		checkModoNormal.setFocusPainted(false);
+		checkModoNormal.setToolTipText("Abre o Minecraft + Forge do jeito normal (só Forge até a 1.12.2). "
+				+ "O modo padrão, do Gradle, não aceita mods feitos para o jogo normal.");
+		checkModoNormal.setEnabled(false);
+		c.gridy = 13;
+		c.insets = new Insets(0, 0, 14, 0);
+		painel.add(checkModoNormal, c);
+
 		botaoJogar = new JButton("INICIAR CLIENT");
 		estilizarBotao(botaoJogar, true);
 		botaoJogar.addActionListener(e -> iniciarJogo());
-		c.gridy = 13;
+		c.gridy = 14;
 		c.insets = new Insets(0, 0, 0, 0);
 		painel.add(botaoJogar, c);
 
@@ -411,7 +425,22 @@ public class BCraftOS1 {
 		atualizarStatusModpack();
 	}
 
+	/** O modo normal só existe para o Forge até a 1.12.2; nas outras combinações fica desligado. */
+	private static void atualizarModoNormal() {
+		if (checkModoNormal == null) {
+			return;
+		}
+		String loader = (String) seletorLoaders.getSelectedItem();
+		boolean disponivel = versaoSelecionada != null
+				&& ModoNormal.disponivelPara(loader, versaoSelecionada.versaoMc);
+		checkModoNormal.setEnabled(disponivel);
+		if (!disponivel) {
+			checkModoNormal.setSelected(false);
+		}
+	}
+
 	private static void atualizarStatusModpack() {
+		atualizarModoNormal();
 		Object escolhido = seletorModpacks.getSelectedItem();
 		if (escolhido == null) {
 			statusModpack.setText(" ");
@@ -449,8 +478,13 @@ public class BCraftOS1 {
 		janela.setVisible(false);
 		try {
 			GerenciadorModpacks.aplicarModpack(pastaVersao, pastaMDK, modpackSelecionado);
-			MinecraftLauncher.iniciar(pastaMDK, versaoSelecionada.versaoMc, jogadorAutenticadoID,
-					() -> SwingUtilities.invokeLater(BCraftOS1::menuPrincipal));
+			Runnable aoFinalizar = () -> SwingUtilities.invokeLater(BCraftOS1::menuPrincipal);
+			if (checkModoNormal.isSelected() && ModoNormal.disponivelPara(loader, versaoSelecionada.versaoMc)) {
+				ModoNormal.iniciar(pastaMDK, versaoSelecionada.versaoMc, versaoSelecionada.codigo,
+						MinecraftLauncher.nickValido(jogadorAutenticadoID), aoFinalizar);
+			} else {
+				MinecraftLauncher.iniciar(pastaMDK, versaoSelecionada.versaoMc, jogadorAutenticadoID, aoFinalizar);
+			}
 		} catch (IllegalStateException diagnostico) {
 			// Aqui chega o resultado da checagem: o motivo real, em vez de um erro seco.
 			janela.setVisible(true);

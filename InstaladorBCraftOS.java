@@ -61,6 +61,8 @@ public class InstaladorBCraftOS {
 			{"GerenciadorVersoes.java", "BCraftOSproject1.BCraftOS1"},
 			{"GerenciadorModpacks.java", "BCraftOSproject1.BCraftOS1"},
 			{"MinecraftLauncher.java", "BCraftOSproject1.BCraftOS1"},
+			{"ModoNormal.java", "BCraftOSproject1.BCraftOS1"},
+			{"MiniJson.java", "BCraftOSproject1.BCraftOS1"},
 			{"OrganizadorPastas.java", "BCraftOSproject1.BCraftOS1"},
 			{"BCraftOS1login.java", "BCraftOSproject1.BCraftOS1login"},
 			{"InfoUsuarios.java", "BCraftOSproject1.BCraftOS1login"}
@@ -69,7 +71,7 @@ public class InstaladorBCraftOS {
 	/** Classes que fazem parte do launcher. Usado para saber o que é do projeto. */
 	private static final List<String> CLASSES_DO_LAUNCHER = List.of(
 			"BCraftOS1", "CatalogoVersoes", "GerenciadorDownloads", "GerenciadorVersoes",
-			"GerenciadorModpacks", "MinecraftLauncher", "OrganizadorPastas",
+			"GerenciadorModpacks", "MinecraftLauncher", "ModoNormal", "MiniJson", "OrganizadorPastas",
 			"BCraftOS1login", "InfoUsuarios");
 
 	/** Nomes que NUNCA são sobrescritos, porque são de outro sistema ou de teste. */
@@ -635,9 +637,15 @@ public class InstaladorBCraftOS {
 				"  src/BCraftOSproject1/BCraftOS1/        arquivos do launcher",
 				"  src/BCraftOSproject1/BCraftOS1login/   tela de login",
 				"  saida/                                 compilado (pode apagar quando quiser)",
-				"  versoes/<Loader>/<versao>/             o jogo baixado no launcher",
-				"  versoes/<Loader>/<versao>/modpacks/    seus mods (.jar)",
+				"  versoes/<Loader>/<versao>/             versoes da conta Bw1_1Bw (a conta dona)",
+				"  versoes/contas/<Conta>/<Loader>/<versao>/   versoes das outras contas (cada uma so ve as suas)",
+				"  <pasta da versao>/modpacks/            seus mods (.jar)",
+				"  cache-normal/                          arquivos do Minecraft/Forge do Modo normal (compartilhado)",
 				"  usuarios/                              suas contas",
+				"",
+				"MODO NORMAL (mods de jogo e ghost clients)",
+				"  No menu, marque \"Modo normal\" (so aparece com Forge ate a 1.12.2).",
+				"  A primeira vez baixa o Minecraft e o Forge e precisa de internet.",
 				"",
 				"SE O WINDOWS RECLAMAR DO ARQUIVO .bat",
 				"  Clique com o botao direito em EXECUTAR.bat, Propriedades,",
