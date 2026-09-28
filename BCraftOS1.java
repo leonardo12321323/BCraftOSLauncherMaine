@@ -87,7 +87,21 @@ public class BCraftOS1 {
 		rodape.setForeground(COR_TEXTO_FRACO);
 		rodape.setFont(new Font("Arial", Font.PLAIN, 11));
 		rodape.setBorder(BorderFactory.createEmptyBorder(14, 0, 0, 0));
-		painelPrincipal.add(rodape, BorderLayout.SOUTH);
+
+		JButton botaoExcluirConta = new JButton("Excluir minha conta");
+		botaoExcluirConta.setFont(new Font("Arial", Font.PLAIN, 11));
+		botaoExcluirConta.setForeground(COR_TEXTO_FRACO);
+		botaoExcluirConta.setFocusPainted(false);
+		botaoExcluirConta.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		botaoExcluirConta.addActionListener(e -> excluirContaAtiva());
+
+		JPanel linhaRodape = new JPanel(new BorderLayout());
+		linhaRodape.setOpaque(false);
+		linhaRodape.setBorder(BorderFactory.createEmptyBorder(14, 0, 0, 0));
+		rodape.setBorder(BorderFactory.createEmptyBorder());
+		linhaRodape.add(rodape, BorderLayout.WEST);
+		linhaRodape.add(botaoExcluirConta, BorderLayout.EAST);
+		painelPrincipal.add(linhaRodape, BorderLayout.SOUTH);
 
 		janela.add(painelPrincipal);
 		janela.pack();
@@ -451,8 +465,48 @@ public class BCraftOS1 {
 		}
 	}
 
+	/**
+	 * Exclui a conta que está logada. Só o dono consegue: é preciso digitar a senha dela,
+	 * e o launcher nunca pede o nome de outra conta, então não dá para apagar a de terceiros.
+	 */
+	private static void excluirContaAtiva() {
+		if (BCraftOSproject1.BCraftOS1login.InfoUsuarios.contaProtegida(jogadorAutenticadoID)) {
+			JOptionPane.showMessageDialog(janela, "Esta conta é protegida e não pode ser excluída.",
+					"Excluir conta", JOptionPane.INFORMATION_MESSAGE);
+			return;
+		}
+		javax.swing.JPasswordField campoSenha = new javax.swing.JPasswordField(18);
+		Object[] conteudo = {
+				"Isso apaga a conta \"" + jogadorAutenticadoID + "\" e não tem volta.",
+				"Digite a senha dela para confirmar:", campoSenha };
+		int resposta = JOptionPane.showConfirmDialog(janela, conteudo, "Excluir conta",
+				JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+		if (resposta != JOptionPane.OK_OPTION) {
+			return;
+		}
+
+		String senha = new String(campoSenha.getPassword());
+		try {
+			boolean apagou = BCraftOSproject1.BCraftOS1login.InfoUsuarios.excluirUsuario(jogadorAutenticadoID, senha);
+			if (!apagou) {
+				JOptionPane.showMessageDialog(janela, "Senha incorreta. A conta não foi excluída.",
+						"Excluir conta", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+		} catch (IOException | java.security.NoSuchAlgorithmException ex) {
+			JOptionPane.showMessageDialog(janela, "Não consegui excluir a conta: " + ex.getMessage(),
+					"Erro", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		JOptionPane.showMessageDialog(janela, "Conta excluída.", "Excluir conta", JOptionPane.INFORMATION_MESSAGE);
+		janela.dispose();
+		SwingUtilities.invokeLater(() -> new BCraftOSproject1.BCraftOS1login.BCraftOS1login().setVisible(true));
+	}
+
 	public static void definirJogadorAtivo(String nomeTitular) {
 		jogadorAutenticadoID = nomeTitular;
+		GerenciadorVersoes.definirContaAtiva(nomeTitular);
 	}
 
 	public static void main(String[] args) {

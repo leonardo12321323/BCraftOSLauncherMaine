@@ -16,16 +16,48 @@ import java.util.Arrays;
  *
  * Dentro da pasta de cada versao ficam o MDK daquela versao e a pasta "modpacks".
  * A pasta antiga (versoes/nome-solto) continua sendo lida, para nao perder nada do que ja existe.
+ *
+ * Cada versão pertence à conta que a baixou:
+ *
+ *   conta protegida (Bw1_1Bw) -> versoes/Loader/codigo         (o mesmo lugar de sempre)
+ *   qualquer outra conta      -> versoes/contas/NomeDaConta/Loader/codigo
+ *
+ * Assim uma conta nunca vê, joga nem mexe nas versões e modpacks de outra.
  */
 public class GerenciadorVersoes {
 
 	private static final String NOME_PASTA_VERSOES = "versoes";
+	/** Pasta que guarda as versões de cada conta comum: versoes/contas/NomeDaConta/... */
+	private static final String NOME_PASTA_CONTAS = "contas";
+	/** Conta que está logada agora; define de quem são as versões que o launcher enxerga. */
+	private static String contaAtiva = null;
 	private static final String VERSAO_PADRAO = "1.21.1-NeoForge";
 	private static final String NOME_MDK_ANTIGO = "MDK-1.21.1-ModDevGradle-main";
 	private static final String NOME_MODPACKS_ANTIGO = "modpacks";
 
 	public static File obterPastaVersoes() {
 		return new File(System.getProperty("user.dir"), NOME_PASTA_VERSOES);
+	}
+
+	/** Chamado no login: a partir daqui, tudo que for baixado ou listado é dessa conta. */
+	public static void definirContaAtiva(String nomeConta) {
+		contaAtiva = nomeConta == null ? null : nomeConta.trim();
+	}
+
+	/**
+	 * Pasta onde ficam as versões da conta logada.
+	 * A conta protegida (e o launcher sem ninguém logado) usa a pasta versoes/ de sempre,
+	 * então o que você já tinha baixado continua no lugar.
+	 */
+	public static File obterPastaVersoesDaConta() {
+		File base = obterPastaVersoes();
+		if (contaAtiva == null || contaAtiva.isEmpty()
+				|| BCraftOSproject1.BCraftOS1login.InfoUsuarios.contaProtegida(contaAtiva)) {
+			return base;
+		}
+		// Só caracteres seguros no nome da pasta, para o nome nunca apontar para fora dela.
+		String nomeSeguro = contaAtiva.replaceAll("[^a-zA-Z0-9 _-]", "_");
+		return new File(new File(base, NOME_PASTA_CONTAS), nomeSeguro);
 	}
 
 	public static void configurarDiretoriosIniciais() {
@@ -58,7 +90,7 @@ public class GerenciadorVersoes {
 
 	/** Pasta da versão no formato do catálogo: versoes/Loader/codigoDaVersao. */
 	public static File obterPastaDaVersao(String loader, String codigoVersao) {
-		return new File(new File(obterPastaVersoes(), loader), codigoVersao);
+		return new File(new File(obterPastaVersoesDaConta(), loader), codigoVersao);
 	}
 
 	/** Nome da pasta que guarda o MDK dentro da pasta da versão. */
@@ -101,7 +133,7 @@ public class GerenciadorVersoes {
 
 	/** Lista as versões que já estão no disco, no formato "Loader/codigo". */
 	public static String[] listarVersoesInstaladas() {
-		File pastaVersoes = obterPastaVersoes();
+		File pastaVersoes = obterPastaVersoesDaConta();
 		File[] pastasLoader = pastaVersoes.listFiles(File::isDirectory);
 		if (pastasLoader == null) {
 			return new String[0];
@@ -133,6 +165,9 @@ public class GerenciadorVersoes {
 		for (File candidata : pastasLoader) {
 			if (!candidata.isDirectory() || obterPastaMDK(candidata) != null) {
 				continue;
+			}
+			if (candidata.getName().equalsIgnoreCase(NOME_PASTA_CONTAS)) {
+				continue; // versoes/contas guarda as contas comuns, não é uma versão solta
 			}
 			boolean ehPastaDeLoader = false;
 			for (String loader : loaders) {

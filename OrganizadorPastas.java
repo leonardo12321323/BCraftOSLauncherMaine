@@ -221,7 +221,7 @@ public class OrganizadorPastas {
 	/** Mostra no console onde está a raiz do projeto, para facilitar achar as pastas. */
 	public static void mostrarResumo() {
 		File raiz = new File(System.getProperty("user.dir"));
-		File pastasVersoes = new File(raiz, "versoes");
+		File pastasVersoes = GerenciadorVersoes.obterPastaVersoesDaConta();
 		System.out.println("[BCraftOS] Pasta do launcher: " + raiz.getAbsolutePath());
 		System.out.println("[BCraftOS] Versões instaladas em: " + pastasVersoes.getAbsolutePath());
 		GerenciadorVersoes.configurarDiretoriosIniciais();

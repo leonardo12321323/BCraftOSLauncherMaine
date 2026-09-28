@@ -33,6 +33,12 @@ public class MinecraftLauncher {
 	/** Marcador de que o cache do Gradle daquela versão já está pronto. */
 	private static final String MARCADOR_CACHE = ".bcraftos-cache-ok";
 
+	/** Init script que injeta o --username na tarefa runClient de qualquer MDK. */
+	private static final String NOME_INIT_SCRIPT = "bcraftos-nick.init.gradle";
+
+	/** Propriedade de sistema usada para levar o nick até o init script. */
+	private static final String PROPRIEDADE_NICK = "bcraftos.nick";
+
 	/** Versões até aqui usam o Gradle Forge antigo, com setupDevWorkspace. */
 	private static final String VERSAO_LIMITE_ANTIGA = "1.12.2";
 
@@ -159,6 +165,14 @@ public class MinecraftLauncher {
 		System.out.println("[BCraftOS] Java: " + d.javaEncontrado + " (versão " + d.javaNecessario + ")");
 		System.out.println("[BCraftOS] Comando: " + String.join(" ", comando));
 
+		try {
+			criarInitScript(pastaMDK);
+		} catch (IOException e) {
+			throw new IllegalStateException("Não consegui criar o script do nick em "
+					+ pastaMDK.getName() + ": " + e.getMessage());
+		}
+		System.out.println("[BCraftOS] Nick usado no jogo: " + nickValido(nickOffline));
+
 		ProcessBuilder pb = new ProcessBuilder(comando);
 		pb.directory(pastaMDK); // 5 — sempre dentro da pasta do MDK
 		pb.inheritIO();         // 6 — a saída fica visível, então o erro aparece
@@ -219,10 +233,49 @@ public class MinecraftLauncher {
 			}
 		}
 
-		comando.add("-PmcUsername=" + nickOffline);
+		// O nick chega ao Minecraft por um init script do Gradle (gerado em criarInitScript),
+		// porque o "-P" sozinho não faz nada se o build.gradle do MDK não ler a propriedade.
+		comando.add("--init-script");
+		comando.add(NOME_INIT_SCRIPT);
+		comando.add("-D" + PROPRIEDADE_NICK + "=" + nickValido(nickOffline));
 		comando.add("--console=plain");
 		comando.add("--stacktrace");
 		return comando;
+	}
+
+	/**
+	 * Escreve o init script que adiciona "--username <nick>" aos argumentos do runClient.
+	 * Sem isso o jogo abre com o nick de desenvolvimento (Player123) e uma sessão falsa,
+	 * e servidores com proteção de nick respondem "Invalid session".
+	 */
+	private static void criarInitScript(File pastaMDK) throws IOException {
+		String conteudo = ""
+				+ "gradle.projectsEvaluated {\n"
+				+ "  rootProject.allprojects { p ->\n"
+				+ "    p.tasks.matching { it.name == 'runClient' }.all { t ->\n"
+				+ "      def nick = System.getProperty('" + PROPRIEDADE_NICK + "')\n"
+				+ "      if (nick != null && t instanceof JavaExec) {\n"
+				+ "        t.args('--username', nick)\n"
+				+ "      }\n"
+				+ "    }\n"
+				+ "  }\n"
+				+ "}\n";
+		Files.writeString(new File(pastaMDK, NOME_INIT_SCRIPT).toPath(), conteudo);
+	}
+
+	/**
+	 * Deixa o nick no formato aceito pelo Minecraft: só letras, números e "_",
+	 * de 3 a 16 caracteres. Contas antigas com espaço ou "-" continuam entrando no launcher.
+	 */
+	static String nickValido(String nick) {
+		String limpo = nick == null ? "" : nick.trim().replaceAll("[^a-zA-Z0-9_]", "_");
+		if (limpo.length() > 16) {
+			limpo = limpo.substring(0, 16);
+		}
+		while (limpo.length() < 3) {
+			limpo += "_";
+		}
+		return limpo;
 	}
 
 	private static void marcarCachePronto(File pastaMDK) {
