@@ -1,5 +1,7 @@
 package BCraftOSproject1.BCraftOS1;
 
+
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -29,7 +31,10 @@ public class GerenciadorDownloads {
 	private static final String MDK_NEOFORGE = "https://github.com/NeoForgeMDKs/MDK-";
 	/** O pacote certo do Forge é o "-mdk.zip": ele já traz o gradlew na raiz do arquivo. */
 	private static final String MDK_FORGE = "https://maven.minecraftforge.net/net/minecraftforge/forge/";
-	private static final String MDK_FABRIC = "https://github.com/FabricMC/fabric-example-mod/archive/refs/heads/main.zip";
+	private static final String MDK_FABRIC_INICIO = "https://github.com/FabricMC/fabric-example-mod/archive/refs/heads/";
+	private static final String MDK_FABRIC_FIM = ".zip";
+	/** O exemplo oficial do Fabric começa na 1.14.4; abaixo disso eles não publicam kit. */
+	private static final String FABRIC_MINIMO = "1.14.4";
 
 	/**
 	 * Garante que a versão escolhida exista em disco. Se já existir, não baixa nada.
@@ -116,10 +121,16 @@ public class GerenciadorDownloads {
 				// O "-src.zip" que eu usava antes não existe nesse servidor e causava erro no download.
 				return MDK_FORGE + versao.codigo + "/forge-" + versao.codigo + "-mdk.zip";
 			case CatalogoVersoes.FABRIC:
-				return MDK_FABRIC;
+				// O exemplo oficial do Fabric não tem branch "main": cada versão tem a sua.
+				// Ex.: 1.21.1, 1.21, 1.20.6... Por isso o endereço muda com a versão escolhida.
+				if (CatalogoVersoes.comparar(versao.versaoMc, FABRIC_MINIMO) < 0) {
+					throw new IOException("O Fabric só tem kit para Minecraft " + FABRIC_MINIMO + " ou mais novo "
+							+ "(esse é o exemplo oficial que eles publicam). Para " + versao.versaoMc
+							+ ", use o Forge ou o NeoForge.");
+				}
+				return MDK_FABRIC_INICIO + versao.versaoMc + MDK_FABRIC_FIM;
 			default:
-				throw new IOException("Para rodar Vanilla, use um MDK do Forge ou NeoForge da mesma versão "
-						+ "e mantenha o modpack sem mods.");
+				throw new IOException("Loader desconhecido: " + loader + ". Use Forge, Fabric ou NeoForge.");
 		}
 	}
 

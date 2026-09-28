@@ -1,5 +1,7 @@
 package BCraftOSproject1.BCraftOS1;
 
+
+
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -9,54 +11,51 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
- * Fala com a internet para descobrir quais versões de cada loader existem.
- * Nada é digitado na mão: tudo vem dos servidores oficiais (Mojang, Fabric, Forge, NeoForge).
+ * Fala com a internet para descobrir quais versões CARREGÁVEIS de cada loader existem.
  *
- * O catálogo cobre desde a 1.8.9. Vale lembrar que nem todo loader existe em toda versão:
- * o 1.8.9, por exemplo, só tem Forge — NeoForge nasceu no 1.20 e Fabric no 1.14.
+ * A ideia é simples: a lista mostra uma versão por linha, só a mais estável, sem encher
+ * a tela com centenas de builds. Quando o Forge tem 47 builds para a 1.20.1, aparece só
+ * o mais recente daquela versão — que é o que interessa para jogar.
+ *
+ * Os loaders são Forge, Fabric e NeoForge. O Vanilla (Minecraft puro) não tem kit de
+ * desenvolvimento para baixar — é uma limitação do próprio jogo, não uma escolha do
+ * launcher. Para jogar sem mods, escolha Forge ou NeoForge da versão desejada e deixe
+ * o modpack sem nenhum mod: o resultado é o jogo vanilla.
+ *
+ * Nada é digitado na mão: as versões de Minecraft vêm do manifesto oficial da Mojang e
+ * os builds vêm dos servidores oficiais de cada loader.
  */
 public class CatalogoVersoes {
 
-	public static final String VANILLA = "Vanilla";
 	public static final String FORGE = "Forge";
 	public static final String FABRIC = "Fabric";
 	public static final String NEOFORGE = "NeoForge";
 
-	public static final String[] LOADERS = {VANILLA, FORGE, FABRIC, NEOFORGE};
+	public static final String[] LOADERS = {FORGE, FABRIC, NEOFORGE};
 
 	/** Versão mais antiga que o catálogo mostra. */
 	public static final String VERSAO_MINIMA = "1.8.9";
 
-	private static final int TIMEOUT_MS = 20000;
+	/** Versão mais nova que o catálogo mostra. */
+	public static final String VERSAO_MAXIMA = "1.21.1";
 
 	/**
-	 * Versões de Minecraft "jogáveis", da mais nova para a mais antiga.
-	 * Só lançamentos oficiais: sem snapshots, sem betas, sem pré-releases.
+	 * O exemplo oficial do Fabric só existe da 1.14.4 para cima. Abaixo disso o Fabric
+	 * até tem loader, mas nada dele para baixar — por isso a lista começa aqui.
 	 */
-	private static final List<String> VERSAO_OFICIAIS = List.of(
-			"1.21.11", "1.21.10", "1.21.9", "1.21.8", "1.21.7", "1.21.6",
-			"1.21.5", "1.21.4", "1.21.3", "1.21.2", "1.21.1", "1.21",
-			"1.20.6", "1.20.5", "1.20.4", "1.20.3", "1.20.2", "1.20.1", "1.20",
-			"1.19.4", "1.19.3", "1.19.2", "1.19.1", "1.19",
-			"1.18.2", "1.18.1", "1.18", "1.17.1", "1.17",
-			"1.16.5", "1.16.4", "1.16.3", "1.16.2", "1.16.1", "1.16",
-			"1.15.2", "1.15.1", "1.15",
-			"1.14.4", "1.14.3", "1.14.2", "1.14.1", "1.14",
-			"1.13.2", "1.13.1", "1.13",
-			"1.12.2", "1.12.1", "1.12",
-			"1.11.2", "1.11.1", "1.11",
-			"1.10.2", "1.10.1", "1.10",
-			"1.9.4", "1.9.3", "1.9.2", "1.9.1", "1.9",
-			"1.8.9", "1.8.8", "1.8.7");
+	public static final String FABRIC_MINIMO = "1.14.4";
+
+	private static final int TIMEOUT_MS = 20000;
+	private static final String MANIFESTO_MOJANG =
+			"https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
+
+	/** Lista oficial das versões do jogo, da mais nova para a mais antiga. É baixada uma vez só. */
+	private static List<String> versoesOficiais;
 
 	public static List<ItemVersao> listarVersoes(String loader) throws Exception {
 		switch (loader) {
-			case VANILLA:
-				return listarVanilla();
 			case FORGE:
 				return listarForge();
 			case FABRIC:
@@ -76,8 +75,9 @@ public class CatalogoVersoes {
 		if (NEOFORGE.equals(loader) && comparar(versaoMc, "1.20") < 0) {
 			return "O NeoForge só existe a partir da 1.20. Para versões mais antigas, use Forge.";
 		}
-		if (FABRIC.equals(loader) && comparar(versaoMc, "1.14") < 0) {
-			return "O Fabric só existe a partir da 1.14. Para versões mais antigas, use Forge.";
+		if (FABRIC.equals(loader) && comparar(versaoMc, FABRIC_MINIMO) < 0) {
+			return "O Fabric só tem kit para " + FABRIC_MINIMO + " ou mais novo. "
+					+ "Para " + versaoMc + ", use Forge.";
 		}
 		return null;
 	}
@@ -105,67 +105,152 @@ public class CatalogoVersoes {
 		}
 	}
 
-	private static List<ItemVersao> listarVanilla() {
-		List<ItemVersao> itens = new ArrayList<>();
-		for (String versao : VERSAO_OFICIAIS) {
-			itens.add(new ItemVersao(versao, "Vanilla " + versao, versao));
+	// ------------------------------------------------------------------
+	// Versões oficiais do jogo (fonte: Mojang)
+	// ------------------------------------------------------------------
+
+	/**
+	 * Baixa da Mojang a lista de lançamentos oficiais e guarda em memória.
+	 * Só lançamentos: snapshots, pré-releases e betas ficam de fora.
+	 */
+	private static synchronized List<String> obterVersoesOficiais() throws Exception {
+		if (versoesOficiais != null) {
+			return versoesOficiais;
 		}
-		return itens;
-	}
 
-	private static List<ItemVersao> listarNeoForge() throws Exception {
-		String json = baixarTexto("https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge");
-		List<ItemVersao> itens = new ArrayList<>();
-		Matcher matcher = Pattern.compile("\"([0-9][0-9.]*)\"").matcher(json);
-
-		while (matcher.find()) {
-			String bruto = matcher.group(1);
-			String mc = converterVersaoNeoForge(bruto);
-			if (mc != null) {
-				itens.add(new ItemVersao(bruto, "NeoForge " + bruto + "  ·  MC " + mc, mc));
-			}
-		}
-		ordenar(itens);
-		return itens;
-	}
-
-	private static List<ItemVersao> listarFabric() throws Exception {
-		String json = baixarTexto("https://meta.fabricmc.net/v2/versions/game");
-		List<ItemVersao> itens = new ArrayList<>();
-		Matcher matcher = Pattern
-				.compile("\\{[^{}]*\"version\"\\s*:\\s*\"([^\"]+)\"[^{}]*\"stable\"\\s*:\\s*(true|false)[^{}]*\\}")
+		List<String> encontradas = new ArrayList<>();
+		String json = baixarTexto(MANIFESTO_MOJANG);
+		java.util.regex.Matcher matcher = java.util.regex.Pattern
+				.compile("\\{\\s*\"id\"\\s*:\\s*\"([^\"]+)\"[^{}]*?\"type\"\\s*:\\s*\"release\"[^{}]*?\\}")
 				.matcher(json);
 
 		while (matcher.find()) {
 			String versao = matcher.group(1);
-			if (matcher.group(2).equals("true") || VERSAO_OFICIAIS.contains(versao)) {
-				itens.add(new ItemVersao(versao, "Fabric " + versao, versao));
+			if (comparar(versao, VERSAO_MINIMA) >= 0 && comparar(versao, VERSAO_MAXIMA) <= 0) {
+				encontradas.add(versao);
 			}
 		}
-		ordenar(itens);
+
+		if (encontradas.isEmpty()) {
+			// Sem internet ou formato diferente: usa a lista de reserva para nunca travar.
+			encontradas.addAll(List.of(
+					"1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4", "1.19.2", "1.18.2", "1.18.1",
+					"1.17.1", "1.16.5", "1.16.4", "1.15.2", "1.14.4", "1.13.2", "1.12.2", "1.11.2",
+					"1.10.2", "1.9.4", "1.8.9"));
+		}
+
+		versoesOficiais = encontradas;
+		return versoesOficiais;
+	}
+
+	// ------------------------------------------------------------------
+	// Forge
+	// ------------------------------------------------------------------
+
+	/**
+	 * O Forge publica centenas de builds. Aqui fica só o build mais novo de cada versão
+	 * do jogo — aquele que a própria comunidade usa por padrão.
+	 */
+	private static List<ItemVersao> listarForge() throws Exception {
+		List<String> oficiais = obterVersoesOficiais();
+		String xml = baixarTexto("https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml");
+
+		// Guarda o melhor build já visto para cada versão do jogo.
+		java.util.Map<String, String> melhorBuild = new java.util.LinkedHashMap<>();
+		java.util.regex.Matcher matcher = java.util.regex.Pattern
+				.compile("<version>([^<]+)</version>").matcher(xml);
+
+		while (matcher.find()) {
+			String completo = matcher.group(1).trim();
+			int traco = completo.indexOf('-');
+			if (traco <= 0) {
+				continue;
+			}
+			String mc = completo.substring(0, traco);
+			String build = completo.substring(traco + 1);
+
+			if (!oficiais.contains(mc)) {
+				continue;
+			}
+			String jaTem = melhorBuild.get(mc);
+			if (jaTem == null || compararBuild(build, jaTem) > 0) {
+				melhorBuild.put(mc, build);
+			}
+		}
+
+		List<ItemVersao> itens = new ArrayList<>();
+		for (java.util.Map.Entry<String, String> item : melhorBuild.entrySet()) {
+			String codigo = item.getKey() + "-" + item.getValue();
+			itens.add(new ItemVersao(codigo, "Forge " + item.getKey() + "  ·  build " + item.getValue(),
+					item.getKey()));
+		}
+		ordenarPorMc(itens);
 		return itens;
 	}
 
-	private static List<ItemVersao> listarForge() throws Exception {
-		String xml = baixarTexto("https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml");
+	// ------------------------------------------------------------------
+	// Fabric
+	// ------------------------------------------------------------------
+
+	/** O Fabric usa a própria versão do jogo como versão do loader. Uma linha por versão. */
+	private static List<ItemVersao> listarFabric() throws Exception {
+		List<String> oficiais = obterVersoesOficiais();
+		String json = baixarTexto("https://meta.fabricmc.net/v2/versions/game");
 		List<ItemVersao> itens = new ArrayList<>();
-		Matcher matcher = Pattern.compile("<version>([^<]+)</version>").matcher(xml);
+		java.util.regex.Matcher matcher = java.util.regex.Pattern
+				.compile("\\{[^{}]*\"version\"\\s*:\\s*\"([^\"]+)\"[^{}]*\\}").matcher(json);
 
 		while (matcher.find()) {
-			String completo = matcher.group(1);
-			String mc = completo.split("-")[0];
-			if (!VERSAO_OFICIAIS.contains(mc)) {
+			String versao = matcher.group(1);
+			// Só até a 1.14.4: abaixo disso o Fabric não publica exemplo para baixar,
+			// então não adianta mostrar na lista.
+			if (comparar(versao, FABRIC_MINIMO) < 0 || comparar(versao, VERSAO_MAXIMA) > 0) {
 				continue;
 			}
-			itens.add(new ItemVersao(completo, "Forge " + completo, mc));
+			if (oficiais.contains(versao)) {
+				itens.add(new ItemVersao(versao, "Fabric " + versao, versao));
+			}
 		}
-		ordenar(itens);
+		ordenarPorMc(itens);
+		return itens;
+	}
+
+	// ------------------------------------------------------------------
+	// NeoForge
+	// ------------------------------------------------------------------
+
+	/** Mesma regra: só o build mais novo de cada versão, em vez da lista inteira. */
+	private static List<ItemVersao> listarNeoForge() throws Exception {
+		String json = baixarTexto(
+				"https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge");
+		java.util.Map<String, String> melhorBuild = new java.util.LinkedHashMap<>();
+		java.util.regex.Matcher matcher = java.util.regex.Pattern
+				.compile("\"([0-9][0-9.]*)\"").matcher(json);
+
+		while (matcher.find()) {
+			String bruto = matcher.group(1);
+			String mc = converterVersaoNeoForge(bruto);
+			if (mc == null || comparar(mc, VERSAO_MAXIMA) > 0) {
+				continue;
+			}
+			String jaTem = melhorBuild.get(mc);
+			if (jaTem == null || compararBuild(bruto, jaTem) > 0) {
+				melhorBuild.put(mc, bruto);
+			}
+		}
+
+		List<ItemVersao> itens = new ArrayList<>();
+		for (java.util.Map.Entry<String, String> item : melhorBuild.entrySet()) {
+			itens.add(new ItemVersao(item.getValue(),
+					"NeoForge " + item.getKey() + "  ·  build " + item.getValue(), item.getKey()));
+		}
+		ordenarPorMc(itens);
 		return itens;
 	}
 
 	/**
 	 * O NeoForge usa "21.1.72" para o MC 1.21.1 e "20.4.237" para o 1.20.4:
-	 * o numero maior e o menor formam a versao do Minecraft.
+	 * o primeiro e o segundo número formam a versão do Minecraft.
 	 */
 	private static String converterVersaoNeoForge(String versao) {
 		String[] partes = versao.split("\\.");
@@ -181,15 +266,13 @@ public class CatalogoVersoes {
 		}
 	}
 
-	private static void ordenar(List<ItemVersao> itens) {
-		itens.sort((a, b) -> {
-			int porMc = Integer.compare(posicaoNaLista(a.versaoMc), posicaoNaLista(b.versaoMc));
-			if (porMc != 0) {
-				return porMc;
-			}
-			// Dentro da mesma versão do jogo, o build mais novo aparece primeiro.
-			return compararBuild(b.codigo, a.codigo);
-		});
+	// ------------------------------------------------------------------
+	// Ordenação e download
+	// ------------------------------------------------------------------
+
+	/** Da versão mais nova do jogo para a mais antiga. */
+	private static void ordenarPorMc(List<ItemVersao> itens) {
+		itens.sort((a, b) -> comparar(b.versaoMc, a.versaoMc));
 	}
 
 	/** Compara os números do build do loader (ex: 47.4.0 é mais novo que 47.2.0). */
@@ -209,11 +292,6 @@ public class CatalogoVersoes {
 			return partesA[i].compareTo(partesB[i]);
 		}
 		return Integer.compare(partesA.length, partesB.length);
-	}
-
-	private static int posicaoNaLista(String versaoMc) {
-		int indice = VERSAO_OFICIAIS.indexOf(versaoMc);
-		return indice < 0 ? VERSAO_OFICIAIS.size() : indice;
 	}
 
 	private static String baixarTexto(String endereco) throws Exception {

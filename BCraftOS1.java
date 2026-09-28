@@ -1,5 +1,7 @@
 package BCraftOSproject1.BCraftOS1;
 
+
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -28,8 +30,9 @@ import javax.swing.border.Border;
  * Tela principal do launcher.
  *
  * Agora as versões vêm por catálogo, em duas etapas:
- *   1) escolhe o loader (Vanilla, Forge, Fabric, NeoForge);
- *   2) escolhe a versão daquele loader — a lista vem da internet;
+ *   1) escolhe o loader (Forge, Fabric, NeoForge);
+ *   2) escolhe a versão daquele loader — a lista vem da internet, só com a versão mais
+ *      estável de cada uma (sem encher a tela de builds);
  *      se a versão ainda não estiver no PC, um botão baixa e instala ela sozinho.
  *
  * Depois disso o modpack é escolhido e o cliente inicia, como já era antes.
@@ -126,21 +129,29 @@ public class BCraftOS1 {
 		seletorLoaders = new JComboBox<>(CatalogoVersoes.LOADERS);
 		estilizarSeletor(seletorLoaders);
 		c.gridy = 3;
-		c.insets = new Insets(0, 0, 16, 0);
+		c.insets = new Insets(0, 0, 6, 0);
 		painel.add(seletorLoaders, c);
 
+		JLabel dicaSemMods = new JLabel(
+				"Para jogar sem mods, escolha Forge ou NeoForge e deixe o modpack sem mod nenhum.");
+		dicaSemMods.setFont(new Font("Arial", Font.PLAIN, 10));
+		dicaSemMods.setForeground(COR_TEXTO_FRACO);
+		c.gridy = 4;
+		c.insets = new Insets(0, 0, 16, 0);
+		painel.add(dicaSemMods, c);
+
 		// --- Versão ---
-		adicionarRotulo(painel, c, 4, "Versão:");
+		adicionarRotulo(painel, c, 5, "Versão:");
 		seletorVersoes = new JComboBox<>();
 		estilizarSeletor(seletorVersoes);
-		c.gridy = 5;
+		c.gridy = 6;
 		c.insets = new Insets(0, 0, 6, 0);
 		painel.add(seletorVersoes, c);
 
 		statusVersao = new JLabel("Carregando versões...");
 		statusVersao.setFont(new Font("Arial", Font.PLAIN, 11));
 		statusVersao.setForeground(COR_TEXTO_FRACO);
-		c.gridy = 6;
+		c.gridy = 7;
 		c.insets = new Insets(0, 0, 8, 0);
 		painel.add(statusVersao, c);
 
@@ -150,36 +161,36 @@ public class BCraftOS1 {
 		barraProgresso.setForeground(COR_DESTAQUE);
 		barraProgresso.setBorderPainted(false);
 		barraProgresso.setVisible(false);
-		c.gridy = 7;
+		c.gridy = 8;
 		c.insets = new Insets(0, 0, 10, 0);
 		painel.add(barraProgresso, c);
 
 		botaoBaixar = new JButton("Baixar esta versão");
 		estilizarBotao(botaoBaixar, false);
 		botaoBaixar.addActionListener(e -> baixarVersaoSelecionada());
-		c.gridy = 8;
+		c.gridy = 9;
 		c.insets = new Insets(0, 0, 18, 0);
 		painel.add(botaoBaixar, c);
 
 		// --- Modpack ---
-		adicionarRotulo(painel, c, 9, "Modpack:");
+		adicionarRotulo(painel, c, 10, "Modpack:");
 		seletorModpacks = new JComboBox<>();
 		estilizarSeletor(seletorModpacks);
-		c.gridy = 10;
+		c.gridy = 11;
 		c.insets = new Insets(0, 0, 6, 0);
 		painel.add(seletorModpacks, c);
 
 		statusModpack = new JLabel(" ");
 		statusModpack.setFont(new Font("Arial", Font.PLAIN, 11));
 		statusModpack.setForeground(COR_TEXTO_FRACO);
-		c.gridy = 11;
+		c.gridy = 12;
 		c.insets = new Insets(0, 0, 20, 0);
 		painel.add(statusModpack, c);
 
 		botaoJogar = new JButton("INICIAR CLIENT");
 		estilizarBotao(botaoJogar, true);
 		botaoJogar.addActionListener(e -> iniciarJogo());
-		c.gridy = 12;
+		c.gridy = 13;
 		c.insets = new Insets(0, 0, 0, 0);
 		painel.add(botaoJogar, c);
 

@@ -1,5 +1,7 @@
 package BCraftOSproject1.BCraftOS1;
 
+
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -14,7 +16,6 @@ import java.nio.file.StandardCopyOption;
  *
  *   BCraftOS/                     <- pasta onde o launcher roda
  *   ├── versoes/
- *   │   ├── Vanilla/
  *   │   ├── Forge/
  *   │   ├── Fabric/
  *   │   └── NeoForge/
@@ -34,7 +35,6 @@ public class OrganizadorPastas {
 	/** Pastas que o launcher precisa ter. Se não existirem, ele cria. */
 	private static final String[] PASTAS_OBRIGATORIAS = {
 			"versoes",
-			"versoes/Vanilla",
 			"versoes/Forge",
 			"versoes/Fabric",
 			"versoes/NeoForge",
@@ -55,9 +55,30 @@ public class OrganizadorPastas {
 			}
 		}
 
+		removerPastaVanillaAntiga(raiz);
 		renomearArquivosDuplicados(raiz);
 		renomearPastaDeContasAntiga(raiz);
 		criarLeiaMe(raiz);
+	}
+
+	/**
+	 * A opção Vanilla saiu do launcher porque o Minecraft puro não tem kit para baixar.
+	 * Se a pasta vazia ficou no disco, ela é removida — só se estiver vazia, nunca com conteúdo.
+	 */
+	private static void removerPastaVanillaAntiga(File raiz) {
+		File vanilla = new File(raiz, "versoes/Vanilla");
+		if (!vanilla.isDirectory()) {
+			return;
+		}
+		File[] conteudo = vanilla.listFiles();
+		if (conteudo != null && conteudo.length > 0) {
+			System.out.println("[BCraftOS] A pasta versoes/Vanilla tem conteúdo e foi mantida. "
+					+ "O Vanilla saiu do launcher: para jogar sem mods use Forge ou NeoForge sem mod nenhum.");
+			return;
+		}
+		if (vanilla.delete()) {
+			System.out.println("[BCraftOS] Pasta vazia versoes/Vanilla removida (o Vanilla saiu do catálogo).");
+		}
 	}
 
 	/**
@@ -160,7 +181,6 @@ public class OrganizadorPastas {
 				"                          MinecraftLauncher.java, OrganizadorPastas.java",
 				"    BCraftOS1login/    -> BCraftOS1login.java, InfoUsuarios.java",
 				"  versoes/                         (criada sozinha, com uma pasta por loader)",
-				"    Vanilla/",
 				"    Forge/",
 				"    Fabric/",
 				"    NeoForge/",
@@ -173,7 +193,7 @@ public class OrganizadorPastas {
 				"      1.8.9-11.15.1.2318-1.8.9/",
 				"        MDK-1.8.9-11.15.1.2318-1.8.9-Forge/   (projeto do Gradle, com o gradlew)",
 				"        modpacks/                              (coloque seus .jar aqui)",
-				"          Vanilla-SemMods/",
+				"          Sem-Mods/",
 				"    NeoForge/",
 				"      21.1.72/",
 				"        MDK-21.1.72-NeoForge/",

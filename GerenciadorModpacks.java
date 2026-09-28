@@ -1,5 +1,7 @@
 package BCraftOSproject1.BCraftOS1;
 
+
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,7 +15,7 @@ import java.util.Arrays;
 public class GerenciadorModpacks {
 
 	private static final String NOME_PASTA_MODPACKS = "modpacks";
-	private static final String MODPACK_PADRAO = "Vanilla-SemMods";
+	private static final String MODPACK_PADRAO = "Sem-Mods";
 
 	public static void configurarDiretoriosIniciais(File pastaVersao) {
 		File pastaModpacks = obterPastaModpacks(pastaVersao);

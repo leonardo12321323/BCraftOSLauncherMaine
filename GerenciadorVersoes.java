@@ -1,14 +1,15 @@
 package BCraftOSproject1.BCraftOS1;
 
+
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
 
 /**
- * Cuida da pasta "versoes", agora organizada por catalogo de loader:
+ * Cuida da pasta "versoes", organizada por catálogo de loader:
  *
- *   versoes/Vanilla/1.21.1/...
  *   versoes/Forge/1.20.1-47.4.0/...
  *   versoes/Fabric/1.21.1/...
  *   versoes/NeoForge/21.1.72/...
@@ -133,8 +134,17 @@ public class GerenciadorVersoes {
 			if (!candidata.isDirectory() || obterPastaMDK(candidata) != null) {
 				continue;
 			}
-			if (candidata.getName().equals("Vanilla") || candidata.getName().equals("Forge")
-					|| candidata.getName().equals("Fabric") || candidata.getName().equals("NeoForge")) {
+			boolean ehPastaDeLoader = false;
+			for (String loader : loaders) {
+				if (loader.equalsIgnoreCase(candidata.getName())) {
+					ehPastaDeLoader = true;
+					break;
+				}
+			}
+			if (!ehPastaDeLoader && candidata.getName().equalsIgnoreCase("Vanilla")) {
+				ehPastaDeLoader = true; // pasta antiga, sem download oficial
+			}
+			if (ehPastaDeLoader) {
 				continue;
 			}
 			File[] sub = candidata.listFiles(File::isDirectory);
