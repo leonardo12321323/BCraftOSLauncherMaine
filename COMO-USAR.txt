@@ -1,0 +1,41 @@
+BCraftOS - COMO USAR
+
+ABRIR O LAUNCHER
+  Windows ....... clique duas vezes em EXECUTAR.bat
+  Linux / Mac ... clique duas vezes em executar.sh (ou rode ./executar.sh)
+
+O executor compila os arquivos e abre o launcher. Nao precisa fazer mais nada.
+
+PASTAS (todas criadas automaticamente)
+  src/BCraftOSproject1/BCraftOS1/        arquivos do launcher
+  src/BCraftOSproject1/BCraftOS1login/   tela de login
+  saida/                                 compilado (pode apagar quando quiser)
+  versoes/<Loader>/<versao>/             versoes da conta Bw1_1Bw (a conta dona)
+  versoes/contas/<Conta>/<Loader>/<versao>/   versoes das outras contas (cada uma so ve as suas)
+  <pasta da versao>/modpacks/            seus mods (.jar)
+  cache-normal/                          arquivos do Minecraft/Forge do Modo normal (compartilhado)
+  servidores/<Tipo>/<versao>/<Nome>/     servidores da conta Bw1_1Bw (mundo, plugins ou mods)
+  servidores/contas/<Conta>/...          servidores das outras contas (cada uma so ve os seus)
+  usuarios/                              suas contas
+
+MODO NORMAL (mods de jogo e ghost clients)
+  No menu, marque "Modo normal" (so aparece com Forge ate a 1.12.2).
+  A primeira vez baixa o Minecraft e o Forge e precisa de internet.
+
+CRIAR SERVIDOR
+  No menu, clique na aba "Servidor". Escolha o tipo (Paper, Purpur, Spigot, Vanilla,
+  Forge, NeoForge, Fabric ou Velocity) e a versao, de um nome e clique em CRIAR SERVIDOR.
+  E preciso marcar que aceita o EULA do Minecraft. O launcher baixa e instala tudo sozinho.
+  Plugins vao na pasta plugins/ do servidor e mods na pasta mods/ (botao Abrir pasta).
+  O Spigot compila na hora: precisa do git no Linux/Mac e leva alguns minutos.
+
+SE O WINDOWS RECLAMAR DO ARQUIVO .bat
+  Clique com o botao direito em EXECUTAR.bat, Propriedades,
+  e marque "Desbloquear". Depois abra de novo.
+
+SE DER ERRO DE JAVA
+  Instale o JDK 17 ou mais novo em https://adoptium.net/temurin/releases/
+  e marque "Add to PATH" na instalacao.
+
+PRECISA BAIXAR O PROJETO DE NOVO?
+  java InstaladorBCraftOS

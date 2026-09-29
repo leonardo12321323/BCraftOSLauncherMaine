@@ -19,6 +19,7 @@ import java.nio.file.StandardCopyOption;
  *   │   ├── Forge/
  *   │   ├── Fabric/
  *   │   └── NeoForge/
+ *   ├── servidores/               <- os servidores criados na aba "Servidor"
  *   ├── usuarios/
  *   ├── cache-normal/            <- criada só quando você usa o Modo normal
  *   ├── ATUALIZE-OS-ARQUIVOS.txt
@@ -39,6 +40,7 @@ public class OrganizadorPastas {
 			"versoes/Forge",
 			"versoes/Fabric",
 			"versoes/NeoForge",
+			"servidores",
 			"usuarios"
 	};
 
@@ -180,12 +182,15 @@ public class OrganizadorPastas {
 				"    BCraftOS1/         -> BCraftOS1.java, CatalogoVersoes.java, GerenciadorDownloads.java,",
 				"                          GerenciadorVersoes.java, GerenciadorModpacks.java,",
 				"                          MinecraftLauncher.java, OrganizadorPastas.java,",
-				"                          ModoNormal.java, MiniJson.java",
+				"                          ModoNormal.java, MiniJson.java, CatalogoServidores.java,",
+				"                          GerenciadorServidores.java, ExecutorServidor.java,",
+				"                          ConsoleServidor.java, TelaServidores.java",
 				"    BCraftOS1login/    -> BCraftOS1login.java, InfoUsuarios.java",
 				"  versoes/                         (criada sozinha, com uma pasta por loader)",
 				"    Forge/",
 				"    Fabric/",
 				"    NeoForge/",
+				"  servidores/                      (criada sozinha; servidores criados na aba Servidor)",
 				"  usuarios/                        (criada sozinha; uma pasta por conta)",
 				"  cache-normal/                    (criada no Modo normal; Minecraft e Forge compartilhados)",
 				"",
@@ -207,13 +212,18 @@ public class OrganizadorPastas {
 				"  As outras contas usam versoes/contas/<Conta>/<Loader>/<versao>/.",
 				"  Cada conta so ve e joga as versoes que ela mesma baixou.",
 				"",
+				"SERVIDORES:",
+				"  servidores/<Tipo>/<versao>/<Nome>/   (contas comuns: servidores/contas/<Conta>/...)",
+				"  Plugins vao em plugins/ e mods em mods/ dentro da pasta do servidor.",
+				"",
 				"ONDE COLOCAR SEUS MODS:",
 				"  versoes/<Loader>/<versão>/modpacks/<nome do modpack>/*.jar",
 				"  O launcher copia esses .jar para o jogo na hora de iniciar.",
 				"",
 				"NÃO APAGUE:",
 				"  - a pasta usuarios (é onde as contas ficam)",
-				"  - a pasta versoes (é o jogo já baixado)"
+				"  - a pasta versoes (é o jogo já baixado)",
+				"  - a pasta servidores (é o mundo dos seus servidores)"
 		);
 		try {
 			File arquivo = new File(raiz, "COMO-USAR.txt");

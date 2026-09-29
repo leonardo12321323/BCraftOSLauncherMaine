@@ -3,12 +3,16 @@ package BCraftOSproject1.BCraftOS1;
 
 
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.Insets;
 import java.io.File;
 import java.io.IOException;
@@ -38,6 +42,9 @@ import javax.swing.border.Border;
  *
  * Depois disso o modpack é escolhido e o cliente inicia, como já era antes.
  * O sistema de skins continua removido.
+ *
+ * No topo há duas abas: "Jogar" (a tela acima) e "Servidor" (TelaServidores), que expande o
+ * menu para criar servidores de Minecraft. A janela cresce ou encolhe conforme a aba.
  */
 public class BCraftOS1 {
 
@@ -70,6 +77,13 @@ public class BCraftOS1 {
 	private static CatalogoVersoes.ItemVersao versaoSelecionada;
 	private static boolean baixando;
 
+	// Abas do topo: "Jogar" (cliente) e "Servidor"
+	private static CardLayout cartoes;
+	private static JPanel areaCartoes;
+	private static JButton abaJogar;
+	private static JButton abaServidor;
+	private static TelaServidores telaServidores;
+
 	public static void menuPrincipal() {
 		// Monta a estrutura de pastas e arruma nomes de arquivo duplicados antes de tudo.
 		OrganizadorPastas.organizar();
@@ -83,7 +97,32 @@ public class BCraftOS1 {
 		JPanel painelPrincipal = new JPanel(new BorderLayout());
 		painelPrincipal.setBackground(COR_FUNDO);
 		painelPrincipal.setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
-		painelPrincipal.add(montarPainel(), BorderLayout.CENTER);
+		// Dois cartões na mesma janela: o de jogar (de sempre) e o de criar servidores.
+		cartoes = new CardLayout() {
+			/** Mede só o cartão visível, para a janela crescer no modo servidor e voltar ao trocar. */
+			@Override
+			public Dimension preferredLayoutSize(Container pai) {
+				synchronized (pai.getTreeLock()) {
+					Insets margens = pai.getInsets();
+					for (Component filho : pai.getComponents()) {
+						if (filho.isVisible()) {
+							Dimension d = filho.getPreferredSize();
+							return new Dimension(d.width + margens.left + margens.right,
+									d.height + margens.top + margens.bottom);
+						}
+					}
+					return super.preferredLayoutSize(pai);
+				}
+			}
+		};
+		areaCartoes = new JPanel(cartoes);
+		areaCartoes.setOpaque(false);
+		areaCartoes.add(montarPainel(), "cliente");
+		telaServidores = new TelaServidores(janela);
+		areaCartoes.add(telaServidores.getPainel(), "servidor");
+
+		painelPrincipal.add(montarAbas(), BorderLayout.NORTH);
+		painelPrincipal.add(areaCartoes, BorderLayout.CENTER);
 
 		JLabel rodape = new JLabel("Conta ativa: " + jogadorAutenticadoID);
 		rodape.setForeground(COR_TEXTO_FRACO);
@@ -111,6 +150,53 @@ public class BCraftOS1 {
 		janela.setVisible(true);
 
 		carregarVersoesDoLoader();
+	}
+
+	/** As duas abas do topo: Jogar e Servidor. */
+	private static JPanel montarAbas() {
+		abaJogar = new JButton("Jogar");
+		abaServidor = new JButton("Servidor");
+		abaJogar.addActionListener(e -> mostrarModo(false));
+		abaServidor.addActionListener(e -> mostrarModo(true));
+
+		JPanel abas = new JPanel(new GridLayout(1, 2, 8, 0));
+		abas.setOpaque(false);
+		abas.setBorder(BorderFactory.createEmptyBorder(0, 0, 14, 0));
+		abas.add(abaJogar);
+		abas.add(abaServidor);
+
+		estilizarAba(abaJogar, true);
+		estilizarAba(abaServidor, false);
+		return abas;
+	}
+
+	private static void estilizarAba(JButton aba, boolean ativa) {
+		aba.setFont(new Font("Arial", Font.BOLD, 13));
+		aba.setFocusPainted(false);
+		aba.setCursor(new Cursor(Cursor.HAND_CURSOR));
+		aba.setPreferredSize(new Dimension(100, 38));
+		if (ativa) {
+			aba.setBackground(COR_DESTAQUE);
+			aba.setForeground(Color.BLACK);
+			aba.setBorder(BorderFactory.createLineBorder(COR_DESTAQUE, 1));
+		} else {
+			aba.setBackground(COR_PAINEL);
+			aba.setForeground(COR_TEXTO);
+			aba.setBorder(BorderFactory.createLineBorder(COR_BORDA, 1));
+		}
+	}
+
+	/** Troca entre jogar e criar servidores; a janela se ajusta ao tamanho do cartão novo. */
+	private static void mostrarModo(boolean servidor) {
+		cartoes.show(areaCartoes, servidor ? "servidor" : "cliente");
+		estilizarAba(abaJogar, !servidor);
+		estilizarAba(abaServidor, servidor);
+		janela.setTitle(servidor ? "BCraftOS - Servidores" : "BCraftOS - Catálogo de Versões");
+		if (servidor) {
+			telaServidores.aoMostrar();
+		}
+		janela.pack();
+		janela.setLocationRelativeTo(null);
 	}
 
 	private static JPanel montarPainel() {

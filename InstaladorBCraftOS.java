@@ -50,7 +50,7 @@ public class InstaladorBCraftOS {
 	/** Pastas que o launcher usa em tempo de execução. */
 	private static final String[] PASTAS_DO_LAUNCHER = {
 			"versoes", "versoes/Forge", "versoes/Fabric", "versoes/NeoForge",
-			"usuarios"
+			"servidores", "usuarios"
 	};
 
 	/** Arquivos .java que compõem o launcher e o pacote de cada um. */
@@ -64,6 +64,11 @@ public class InstaladorBCraftOS {
 			{"ModoNormal.java", "BCraftOSproject1.BCraftOS1"},
 			{"MiniJson.java", "BCraftOSproject1.BCraftOS1"},
 			{"OrganizadorPastas.java", "BCraftOSproject1.BCraftOS1"},
+			{"CatalogoServidores.java", "BCraftOSproject1.BCraftOS1"},
+			{"GerenciadorServidores.java", "BCraftOSproject1.BCraftOS1"},
+			{"ExecutorServidor.java", "BCraftOSproject1.BCraftOS1"},
+			{"ConsoleServidor.java", "BCraftOSproject1.BCraftOS1"},
+			{"TelaServidores.java", "BCraftOSproject1.BCraftOS1"},
 			{"BCraftOS1login.java", "BCraftOSproject1.BCraftOS1login"},
 			{"InfoUsuarios.java", "BCraftOSproject1.BCraftOS1login"}
 	};
@@ -72,7 +77,8 @@ public class InstaladorBCraftOS {
 	private static final List<String> CLASSES_DO_LAUNCHER = List.of(
 			"BCraftOS1", "CatalogoVersoes", "GerenciadorDownloads", "GerenciadorVersoes",
 			"GerenciadorModpacks", "MinecraftLauncher", "ModoNormal", "MiniJson", "OrganizadorPastas",
-			"BCraftOS1login", "InfoUsuarios");
+			"CatalogoServidores", "GerenciadorServidores", "ExecutorServidor", "ConsoleServidor",
+			"TelaServidores", "BCraftOS1login", "InfoUsuarios");
 
 	/** Nomes que NUNCA são sobrescritos, porque são de outro sistema ou de teste. */
 	private static final List<String> NAO_INSTALAR = List.of(
@@ -641,11 +647,20 @@ public class InstaladorBCraftOS {
 				"  versoes/contas/<Conta>/<Loader>/<versao>/   versoes das outras contas (cada uma so ve as suas)",
 				"  <pasta da versao>/modpacks/            seus mods (.jar)",
 				"  cache-normal/                          arquivos do Minecraft/Forge do Modo normal (compartilhado)",
+				"  servidores/<Tipo>/<versao>/<Nome>/     servidores da conta Bw1_1Bw (mundo, plugins ou mods)",
+				"  servidores/contas/<Conta>/...          servidores das outras contas (cada uma so ve os seus)",
 				"  usuarios/                              suas contas",
 				"",
 				"MODO NORMAL (mods de jogo e ghost clients)",
 				"  No menu, marque \"Modo normal\" (so aparece com Forge ate a 1.12.2).",
 				"  A primeira vez baixa o Minecraft e o Forge e precisa de internet.",
+				"",
+				"CRIAR SERVIDOR",
+				"  No menu, clique na aba \"Servidor\". Escolha o tipo (Paper, Purpur, Spigot, Vanilla,",
+				"  Forge, NeoForge, Fabric ou Velocity) e a versao, de um nome e clique em CRIAR SERVIDOR.",
+				"  E preciso marcar que aceita o EULA do Minecraft. O launcher baixa e instala tudo sozinho.",
+				"  Plugins vao na pasta plugins/ do servidor e mods na pasta mods/ (botao Abrir pasta).",
+				"  O Spigot compila na hora: precisa do git no Linux/Mac e leva alguns minutos.",
 				"",
 				"SE O WINDOWS RECLAMAR DO ARQUIVO .bat",
 				"  Clique com o botao direito em EXECUTAR.bat, Propriedades,",
