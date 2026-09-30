@@ -69,7 +69,7 @@ public class ExecutorServidor {
 	 */
 	public static File executavelJava(String tipo, String versaoMc) {
 		boolean proxy = CatalogoServidores.ehProxy(tipo);
-		List<String> aceitas = proxy ? List.of("21", "17") : List.of(MinecraftLauncher.javaNecessarioPara(versaoMc));
+		List<String> aceitas = proxy ? List.of("21", "17") : List.of(CatalogoServidores.javaNecessarioPara(versaoMc));
 
 		for (String versao : aceitas) {
 			String casa = MinecraftLauncher.procurarJava(versao);

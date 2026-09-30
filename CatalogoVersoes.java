@@ -39,7 +39,7 @@ public class CatalogoVersoes {
 	public static final String VERSAO_MINIMA = "1.8.9";
 
 	/** Versão mais nova que o catálogo mostra. */
-	public static final String VERSAO_MAXIMA = "1.21.1";
+	public static final String VERSAO_MAXIMA = "26.3";
 
 	/**
 	 * O exemplo oficial do Fabric só existe da 1.14.4 para cima. Abaixo disso o Fabric
@@ -134,7 +134,8 @@ public class CatalogoVersoes {
 		if (encontradas.isEmpty()) {
 			// Sem internet ou formato diferente: usa a lista de reserva para nunca travar.
 			encontradas.addAll(List.of(
-					"1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4", "1.19.2", "1.18.2", "1.18.1",
+					"26.3", "26.2", "26.1.2", "26.1.1", "26.1", "1.21.11", "1.21.10", "1.21.9", "1.21.8", "1.21.7",
+					"1.21.6", "1.21.5", "1.21.4", "1.21.3", "1.21.2", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4", "1.19.2", "1.18.2", "1.18.1",
 					"1.17.1", "1.16.5", "1.16.4", "1.15.2", "1.14.4", "1.13.2", "1.12.2", "1.11.2",
 					"1.10.2", "1.9.4", "1.8.9"));
 		}
@@ -225,7 +226,7 @@ public class CatalogoVersoes {
 				"https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge");
 		java.util.Map<String, String> melhorBuild = new java.util.LinkedHashMap<>();
 		java.util.regex.Matcher matcher = java.util.regex.Pattern
-				.compile("\"([0-9][0-9.]*)\"").matcher(json);
+				.compile("\"([0-9][0-9.]*(?:-beta)?)\"").matcher(json);
 
 		while (matcher.find()) {
 			String bruto = matcher.group(1);
@@ -234,7 +235,7 @@ public class CatalogoVersoes {
 				continue;
 			}
 			String jaTem = melhorBuild.get(mc);
-			if (jaTem == null || compararBuild(bruto, jaTem) > 0) {
+			if (jaTem == null || melhorQueNeoForge(bruto, jaTem)) {
 				melhorBuild.put(mc, bruto);
 			}
 		}
@@ -249,18 +250,41 @@ public class CatalogoVersoes {
 	}
 
 	/**
-	 * O NeoForge usa "21.1.72" para o MC 1.21.1 e "20.4.237" para o 1.20.4:
-	 * o primeiro e o segundo número formam a versão do Minecraft.
+	 * Estável sempre ganha de beta (várias versões 1.21.x só têm beta, e aí o beta mais novo
+	 * é o que fica). Entre dois do mesmo tipo, vale o número maior.
+	 */
+	private static boolean melhorQueNeoForge(String candidato, String atual) {
+		boolean betaCandidato = candidato.endsWith("-beta");
+		boolean betaAtual = atual.endsWith("-beta");
+		if (betaCandidato != betaAtual) {
+			return !betaCandidato;
+		}
+		return compararBuild(candidato.replace("-beta", ""), atual.replace("-beta", "")) > 0;
+	}
+
+	/**
+	 * Descobre para qual Minecraft é um build do NeoForge:
+	 *   "21.1.72"   -> 1.21.1    (esquema antigo: 21 = 1.21, 1 = .1)
+	 *   "26.2.0.64" -> 26.2      (esquema novo, a partir da 26.1: a.b.c.build, com c = 0 omitido)
+	 *   "26.1.2.95" -> 26.1.2
+	 * Os builds "47.x" são do NeoForge da 1.20.1, que usa outro sistema e não entram na lista.
 	 */
 	private static String converterVersaoNeoForge(String versao) {
-		String[] partes = versao.split("\\.");
+		String[] partes = versao.replace("-beta", "").split("\\.");
 		if (partes.length < 2) {
 			return null;
 		}
 		try {
 			int primeiro = Integer.parseInt(partes[0]);
 			int segundo = Integer.parseInt(partes[1]);
-			return "1." + primeiro + "." + segundo;
+			if (primeiro >= 26 && primeiro < 47) { // 47 é o NeoForge antigo da 1.20.1, não o ano 2047
+				int terceiro = partes.length > 2 ? Integer.parseInt(partes[2]) : 0;
+				return primeiro + "." + segundo + (terceiro != 0 ? "." + terceiro : "");
+			}
+			if (primeiro >= 20 && primeiro <= 25) {
+				return "1." + primeiro + "." + segundo;
+			}
+			return null;
 		} catch (NumberFormatException e) {
 			return null;
 		}

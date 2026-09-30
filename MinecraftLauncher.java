@@ -299,6 +299,10 @@ public class MinecraftLauncher {
 		if (versaoMc == null) {
 			return "21";
 		}
+		// A partir da 26.1 o Minecraft exige o Java 25.
+		if (CatalogoVersoes.comparar(versaoMc, "26.1") >= 0) {
+			return "25";
+		}
 		if (CatalogoVersoes.comparar(versaoMc, "1.20.5") >= 0) {
 			return "21";
 		}

@@ -442,10 +442,10 @@ public class TelaServidores {
 		} else if (CatalogoServidores.ehProxy(tipo)) {
 			statusVersao.setText("Java necessário: 21 (ou 17).");
 		} else if (CatalogoServidores.SPIGOT.equals(tipo)) {
-			statusVersao.setText("Java necessário: " + MinecraftLauncher.javaNecessarioPara(item.versaoMc)
+			statusVersao.setText("Java necessário: " + CatalogoServidores.javaNecessarioPara(item.versaoMc)
 					+ ". Vai compilar na hora: leva alguns minutos.");
 		} else {
-			statusVersao.setText("Java necessário: " + MinecraftLauncher.javaNecessarioPara(item.versaoMc) + ".");
+			statusVersao.setText("Java necessário: " + CatalogoServidores.javaNecessarioPara(item.versaoMc) + ".");
 		}
 	}
 

@@ -19,9 +19,10 @@ import java.util.regex.Pattern;
 /**
  * Catálogo dos tipos de SERVIDOR que o launcher sabe criar, e das versões de cada um.
  *
- * Segue a mesma regra do catálogo de clientes (CatalogoVersoes): as versões de Minecraft vêm
- * do manifesto oficial da Mojang, ficam entre VERSAO_MINIMA e VERSAO_MAXIMA, e Forge, NeoForge
- * e Fabric usam exatamente a mesma lista do cliente (é o CatalogoVersoes quem responde).
+ * Segue a mesma ideia do catálogo de clientes (CatalogoVersoes): as versões de Minecraft vêm
+ * do manifesto oficial da Mojang, a partir de VERSAO_MINIMA. A diferença é que o servidor NÃO
+ * tem limite de versão nova: aparece tudo que a Mojang lançou, inclusive a linha 26.x
+ * (o Minecraft trocou de 1.21.x para 26.1, 26.2... e essas versões exigem Java 25).
  *
  * Tipos:
  *   Paper, Purpur, Spigot ... servidores com PLUGINS (pasta plugins/)
@@ -126,10 +127,11 @@ public class CatalogoServidores {
 	public static List<CatalogoVersoes.ItemVersao> listarVersoes(String tipo) throws Exception {
 		switch (tipo) {
 			case FORGE:
+				return listarForge();
 			case NEOFORGE:
+				return listarNeoForge();
 			case FABRIC:
-				// Mesma lista do cliente: o servidor combina 100% com a versão que se joga.
-				return CatalogoVersoes.listarVersoes(tipo);
+				return listarFabric();
 			case VANILLA:
 				return listarVanilla();
 			case PAPER:
@@ -205,7 +207,7 @@ public class CatalogoServidores {
 		List<String> compilaveis = new ArrayList<>();
 		try {
 			String pagina = baixarTexto("https://hub.spigotmc.org/versions/");
-			Matcher m = Pattern.compile("href=\"(1\\.[0-9]+(?:\\.[0-9]+)?)\\.json\"").matcher(pagina);
+			Matcher m = Pattern.compile("href=\"([0-9]+\\.[0-9]+(?:\\.[0-9]+)?)\\.json\"").matcher(pagina);
 			while (m.find()) {
 				if (oficiais.containsKey(m.group(1)) && !compilaveis.contains(m.group(1))) {
 					compilaveis.add(m.group(1));
@@ -254,10 +256,167 @@ public class CatalogoServidores {
 	}
 
 	// ------------------------------------------------------------------
+	// Forge, NeoForge e Fabric (sem limite de versão nova, ao contrário do cliente)
+	// ------------------------------------------------------------------
+
+	/** Só o build mais novo de cada versão do jogo, como no catálogo de clientes. */
+	private static List<CatalogoVersoes.ItemVersao> listarForge() throws Exception {
+		String xml = baixarTexto("https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml");
+		return montarForge(xml, obterVersoesMojang().keySet());
+	}
+
+	static List<CatalogoVersoes.ItemVersao> montarForge(String xml, java.util.Set<String> oficiais) {
+		Map<String, String> melhorBuild = new LinkedHashMap<>();
+		Matcher matcher = Pattern.compile("<version>([^<]+)</version>").matcher(xml);
+		while (matcher.find()) {
+			String completo = matcher.group(1).trim();
+			int traco = completo.indexOf('-');
+			if (traco <= 0) {
+				continue;
+			}
+			String mc = completo.substring(0, traco);
+			String build = completo.substring(traco + 1);
+			if (!oficiais.contains(mc)) {
+				continue;
+			}
+			String jaTem = melhorBuild.get(mc);
+			if (jaTem == null || compararBuild(build, jaTem) > 0) {
+				melhorBuild.put(mc, build);
+			}
+		}
+		List<CatalogoVersoes.ItemVersao> itens = new ArrayList<>();
+		for (Map.Entry<String, String> item : melhorBuild.entrySet()) {
+			itens.add(new CatalogoVersoes.ItemVersao(item.getKey() + "-" + item.getValue(),
+					"Forge " + item.getKey() + "  ·  build " + item.getValue(), item.getKey()));
+		}
+		ordenar(itens);
+		return itens;
+	}
+
+	/** O Fabric usa a própria versão do jogo como versão do loader. Uma linha por versão. */
+	private static List<CatalogoVersoes.ItemVersao> listarFabric() throws Exception {
+		Map<String, String> oficiais = obterVersoesMojang();
+		String json = baixarTexto("https://meta.fabricmc.net/v2/versions/game");
+		List<CatalogoVersoes.ItemVersao> itens = new ArrayList<>();
+		Matcher matcher = Pattern.compile("\\{[^{}]*\"version\"\\s*:\\s*\"([^\"]+)\"[^{}]*\\}").matcher(json);
+		while (matcher.find()) {
+			String versao = matcher.group(1);
+			if (CatalogoVersoes.comparar(versao, CatalogoVersoes.FABRIC_MINIMO) < 0) {
+				continue; // abaixo disso o Fabric não publica servidor
+			}
+			if (oficiais.containsKey(versao)) {
+				itens.add(new CatalogoVersoes.ItemVersao(versao, "Fabric " + versao, versao));
+			}
+		}
+		ordenar(itens);
+		return itens;
+	}
+
+	private static List<CatalogoVersoes.ItemVersao> listarNeoForge() throws Exception {
+		return montarNeoForge(baixarTexto(
+				"https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge"));
+	}
+
+	/**
+	 * Para cada versão do jogo fica o build estável mais novo; se só existirem builds "-beta"
+	 * (é o caso de várias 1.21.x), fica o beta mais novo, marcado no nome.
+	 */
+	static List<CatalogoVersoes.ItemVersao> montarNeoForge(String json) {
+		Map<String, String> melhor = new LinkedHashMap<>();
+		Matcher matcher = Pattern.compile("\"([0-9][0-9.]*(?:-beta)?)\"").matcher(json);
+		while (matcher.find()) {
+			String bruto = matcher.group(1);
+			String mc = converterVersaoNeoForge(bruto);
+			if (mc == null) {
+				continue;
+			}
+			String jaTem = melhor.get(mc);
+			if (jaTem == null || melhorQue(bruto, jaTem)) {
+				melhor.put(mc, bruto);
+			}
+		}
+		List<CatalogoVersoes.ItemVersao> itens = new ArrayList<>();
+		for (Map.Entry<String, String> item : melhor.entrySet()) {
+			itens.add(new CatalogoVersoes.ItemVersao(item.getValue(),
+					"NeoForge " + item.getKey() + "  ·  build " + item.getValue(), item.getKey()));
+		}
+		ordenar(itens);
+		return itens;
+	}
+
+	/** Estável sempre ganha de beta; entre iguais, o número maior ganha. */
+	private static boolean melhorQue(String candidato, String atual) {
+		boolean betaCandidato = candidato.endsWith("-beta");
+		boolean betaAtual = atual.endsWith("-beta");
+		if (betaCandidato != betaAtual) {
+			return !betaCandidato;
+		}
+		return compararBuild(candidato.replace("-beta", ""), atual.replace("-beta", "")) > 0;
+	}
+
+	/**
+	 * Descobre para qual Minecraft é um build do NeoForge:
+	 *   "21.1.72"   -> 1.21.1    (esquema antigo: 21 = 1.21, 1 = .1)
+	 *   "26.2.0.64" -> 26.2      (esquema novo, a partir da 26.1: a.b.c.build, com c = 0 omitido)
+	 *   "26.1.2.95" -> 26.1.2
+	 * Os builds "47.x" são do NeoForge da 1.20.1, que usa outro sistema e não entra na lista.
+	 */
+	static String converterVersaoNeoForge(String versao) {
+		String[] partes = versao.replace("-beta", "").split("\\.");
+		if (partes.length < 2) {
+			return null;
+		}
+		try {
+			int primeiro = Integer.parseInt(partes[0]);
+			int segundo = Integer.parseInt(partes[1]);
+			if (primeiro >= 26 && primeiro < 47) { // 47 é o NeoForge antigo da 1.20.1, não o ano 2047
+				int terceiro = partes.length > 2 ? Integer.parseInt(partes[2]) : 0;
+				return primeiro + "." + segundo + (terceiro != 0 ? "." + terceiro : "");
+			}
+			if (primeiro >= 20 && primeiro <= 25) {
+				return "1." + primeiro + "." + segundo;
+			}
+			return null;
+		} catch (NumberFormatException e) {
+			return null;
+		}
+	}
+
+	/** Compara os números do build do loader (ex.: 47.4.0 é mais novo que 47.2.0). */
+	private static int compararBuild(String a, String b) {
+		String[] partesA = a.split("[.-]");
+		String[] partesB = b.split("[.-]");
+		int tamanho = Math.min(partesA.length, partesB.length);
+		for (int i = 0; i < tamanho; i++) {
+			if (partesA[i].equals(partesB[i])) {
+				continue;
+			}
+			boolean numericoA = partesA[i].chars().allMatch(Character::isDigit);
+			boolean numericoB = partesB[i].chars().allMatch(Character::isDigit);
+			if (numericoA && numericoB) {
+				return Integer.compare(Integer.parseInt(partesA[i]), Integer.parseInt(partesB[i]));
+			}
+			return partesA[i].compareTo(partesB[i]);
+		}
+		return Integer.compare(partesA.length, partesB.length);
+	}
+
+	/**
+	 * Java exigido por versão do jogo. Da 26.1 em diante é o Java 25; para as versões
+	 * anteriores vale a mesma regra do cliente (8, 17 ou 21).
+	 */
+	public static String javaNecessarioPara(String versaoMc) {
+		if (versaoMc != null && CatalogoVersoes.comparar(versaoMc, "26.1") >= 0) {
+			return "25";
+		}
+		return MinecraftLauncher.javaNecessarioPara(versaoMc);
+	}
+
+	// ------------------------------------------------------------------
 	// Mojang
 	// ------------------------------------------------------------------
 
-	/** Lançamentos oficiais entre a versão mínima e a máxima do launcher, com o JSON de cada um. */
+	/** Lançamentos oficiais a partir da versão mínima do launcher, com o JSON de cada um. */
 	private static synchronized Map<String, String> obterVersoesMojang() throws Exception {
 		if (versoesMojang != null) {
 			return versoesMojang;
@@ -273,8 +432,7 @@ public class CatalogoServidores {
 				String id = MiniJson.texto(versao.get("id"));
 				String url = MiniJson.texto(versao.get("url"));
 				if (id != null && url != null
-						&& CatalogoVersoes.comparar(id, CatalogoVersoes.VERSAO_MINIMA) >= 0
-						&& CatalogoVersoes.comparar(id, CatalogoVersoes.VERSAO_MAXIMA) <= 0) {
+						&& CatalogoVersoes.comparar(id, CatalogoVersoes.VERSAO_MINIMA) >= 0) {
 					encontradas.put(id, url);
 				}
 			}
