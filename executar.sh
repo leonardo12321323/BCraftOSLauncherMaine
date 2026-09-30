@@ -22,15 +22,16 @@ fi
 
 echo "[1/3] Compilando os arquivos..."
 mkdir -p saida
-mapfile -t ARQUIVOS < <(find src -name '*.java' 2>/dev/null)
-if [ "${#ARQUIVOS[@]}" -eq 0 ]; then
+ARQUIVOS=$(find src -name '*.java' 2>/dev/null)
+if [ -z "$ARQUIVOS" ]; then
   echo
   echo "NAO ACHEI os arquivos .java na pasta src."
   echo "Rode primeiro o instalador:  java InstaladorBCraftOS"
   exit 1
 fi
 
-javac -encoding UTF-8 -d saida "${ARQUIVOS[@]}"
+javac -encoding UTF-8 -d saida $ARQUIVOS
+
 if [ $? -ne 0 ]; then
   echo
   echo "DEU ERRO AO COMPILAR. As mensagens estao logo acima."
@@ -51,3 +52,4 @@ java -cp saida BCraftOSproject1.BCraftOS1login.BCraftOS1login
 
 echo
 echo "Launcher fechado. Ate a proxima!"
+
