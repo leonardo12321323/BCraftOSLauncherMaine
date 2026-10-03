@@ -1,6 +1,14 @@
 @echo off
-chcp 65001 >nul
+chcp 65001 >nul 2>&1
 cd /d "%~dp0"
+
+if exist "%~dp0instalar-jdk.bat" (
+    call "%~dp0instalar-jdk.bat"
+    if errorlevel 1 (
+        pause
+        exit /b 1
+    )
+)
 
 javac -encoding UTF-8 InstaladorBCraftOS.java
 if errorlevel 1 (

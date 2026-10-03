@@ -79,8 +79,11 @@ public class ModoNormal {
 				System.out.println("[BCraftOS] Modo normal: iniciando o jogo...");
 				ProcessBuilder pb = new ProcessBuilder(comando);
 				pb.directory(gameDir);
-				pb.inheritIO();
-				int codigo = pb.start().waitFor();
+				pb.redirectErrorStream(true); // a saída vai para o console e para logs/
+				Process processo = pb.start();
+				Thread leitor = RegistroLogs.acompanhar(processo, "modo-normal");
+				int codigo = processo.waitFor();
+				leitor.join(3000);
 				System.out.println(codigo == 0
 						? "[BCraftOS] Minecraft encerrado normalmente."
 						: "[BCraftOS] O jogo terminou com código " + codigo + ". Veja as mensagens acima.");
@@ -227,8 +230,12 @@ public class ModoNormal {
 
 		List<String> comando = new ArrayList<>();
 		comando.add(executavelJava(javaHome));
-		comando.add("-Xms512M");
-		comando.add("-Xmx2G");
+		// Memória conforme a RAM real do computador (em PC de 2 GB o jogo usa bem menos).
+		PerfilMemoria memoria = PerfilMemoria.paraVersao(versaoMc);
+		comando.add("-Xms" + memoria.jogoMinMb + "M");
+		comando.add("-Xmx" + memoria.jogoMaxMb + "M");
+		comando.addAll(memoria.flagsJogo);
+		System.out.println("[BCraftOS] Modo normal - perfil de memória: " + memoria);
 		comando.add("-Djava.library.path=" + pastaNatives.getAbsolutePath());
 		comando.add("-Dminecraft.launcher.brand=BCraftOS");
 		comando.add("-cp");
@@ -396,7 +403,7 @@ public class ModoNormal {
 		}
 
 		System.out.println("[BCraftOS] Baixando " + faltando.size() + " arquivos de assets (só na primeira vez)...");
-		ExecutorService pool = Executors.newFixedThreadPool(8);
+		ExecutorService pool = Executors.newFixedThreadPool(PerfilMemoria.detectar().downloadsSimultaneos());
 		AtomicInteger feitos = new AtomicInteger();
 		List<Future<?>> tarefas = new ArrayList<>();
 		for (String hash : faltando.keySet()) {

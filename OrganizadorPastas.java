@@ -41,7 +41,8 @@ public class OrganizadorPastas {
 			"versoes/Fabric",
 			"versoes/NeoForge",
 			"servidores",
-			"usuarios"
+			"usuarios",
+			"java"
 	};
 
 	/** " - Copia" é o sufixo que o Windows usa ao duplicar arquivo. */
@@ -184,7 +185,8 @@ public class OrganizadorPastas {
 				"                          MinecraftLauncher.java, OrganizadorPastas.java,",
 				"                          ModoNormal.java, MiniJson.java, CatalogoServidores.java,",
 				"                          GerenciadorServidores.java, ExecutorServidor.java,",
-				"                          ConsoleServidor.java, TelaServidores.java",
+				"                          ConsoleServidor.java, TelaServidores.java,",
+				"                          PerfilMemoria.java, InstaladorJava.java, RegistroLogs.java",
 				"    BCraftOS1login/    -> BCraftOS1login.java, InfoUsuarios.java",
 				"  versoes/                         (criada sozinha, com uma pasta por loader)",
 				"    Forge/",
@@ -192,6 +194,8 @@ public class OrganizadorPastas {
 				"    NeoForge/",
 				"  servidores/                      (criada sozinha; servidores criados na aba Servidor)",
 				"  usuarios/                        (criada sozinha; uma pasta por conta)",
+				"  java/                            (criada sozinha; JDKs que o launcher baixou: jdk-8, jdk-17, jdk-21...)",
+				"  logs/                           (criada sozinha; o que o launcher e o jogo escreveram, um arquivo por execução)",
 				"  cache-normal/                    (criada no Modo normal; Minecraft e Forge compartilhados)",
 				"",
 				"DEPOIS DE BAIXAR UMA VERSÃO NO LAUNCHER, ela aparece assim:",

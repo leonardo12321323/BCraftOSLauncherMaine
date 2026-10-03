@@ -446,8 +446,17 @@ public class BCraftOS1 {
 		new SwingWorker<File, Object[]>() {
 			@Override
 			protected File doInBackground() throws Exception {
-				return GerenciadorDownloads.garantirVersao(loader, item,
-						(etapa, porcentagem) -> publish(new Object[]{etapa, porcentagem}));
+				GerenciadorDownloads.Progresso progresso =
+						comConsole((etapa, porcentagem) -> publish(new Object[]{etapa, porcentagem}));
+				File pasta = GerenciadorDownloads.garantirVersao(loader, item, progresso);
+				// Já deixa o Java certo pronto, para o botão Jogar não ter que esperar depois.
+				try {
+					MinecraftLauncher.garantirJava(item.versaoMc, progresso);
+				} catch (Exception semJava) {
+					System.err.println("[BCraftOS Aviso] A versão baixou, mas o Java não: " + semJava.getMessage()
+							+ " Vou tentar de novo quando você clicar em Jogar.");
+				}
+				return pasta;
 			}
 
 			@Override
@@ -561,6 +570,13 @@ public class BCraftOS1 {
 			return;
 		}
 
+		// Falta o Java dessa versão? Baixa sozinho (Temurin) e continua daqui quando terminar.
+		String javaNecessario = MinecraftLauncher.javaNecessarioPara(versaoSelecionada.versaoMc);
+		if (MinecraftLauncher.procurarJava(javaNecessario) == null) {
+			baixarJavaEDepoisJogar(versaoSelecionada.versaoMc, javaNecessario);
+			return;
+		}
+
 		janela.setVisible(false);
 		try {
 			GerenciadorModpacks.aplicarModpack(pastaVersao, pastaMDK, modpackSelecionado);
@@ -583,6 +599,73 @@ public class BCraftOS1 {
 					"Erro", JOptionPane.ERROR_MESSAGE);
 			janela.setVisible(true);
 		}
+	}
+
+	/**
+	 * Faz o andamento dos downloads aparecer TAMBÉM no console (e, por consequência, no log):
+	 * uma linha a cada 10% e uma a cada etapa nova. Assim dá para ver que está trabalhando,
+	 * e quando termina, sem depender só da barra da janela.
+	 */
+	private static GerenciadorDownloads.Progresso comConsole(GerenciadorDownloads.Progresso destino) {
+		final int[] ultimoBalde = {-1};
+		final String[] ultimaEtapa = {""};
+		return (etapa, porcentagem) -> {
+			int balde = porcentagem / 10;
+			boolean download = etapa.startsWith("Baixando");
+			if (balde != ultimoBalde[0] || (!download && !etapa.equals(ultimaEtapa[0]))) {
+				System.out.println("[BCraftOS] " + etapa + " (" + porcentagem + "%)");
+				ultimoBalde[0] = balde;
+				ultimaEtapa[0] = etapa;
+			}
+			destino.atualizar(etapa, porcentagem);
+		};
+	}
+
+	/** Baixa o JDK em segundo plano mostrando a barra; quando termina, clica em Jogar de novo. */
+	private static void baixarJavaEDepoisJogar(String versaoMc, String javaNecessario) {
+		if (baixando) {
+			return;
+		}
+		baixando = true;
+		botaoBaixar.setEnabled(false);
+		botaoJogar.setEnabled(false);
+		barraProgresso.setValue(0);
+		barraProgresso.setVisible(true);
+		statusVersao.setText("Esta versão precisa do Java " + javaNecessario + ". Baixando sozinho...");
+
+		new SwingWorker<String, Object[]>() {
+			@Override
+			protected String doInBackground() throws Exception {
+				return MinecraftLauncher.garantirJava(versaoMc,
+						comConsole((etapa, porcentagem) -> publish(new Object[]{etapa, porcentagem})));
+			}
+
+			@Override
+			protected void process(List<Object[]> avisos) {
+				Object[] ultimo = avisos.get(avisos.size() - 1);
+				statusVersao.setText((String) ultimo[0]);
+				barraProgresso.setValue((Integer) ultimo[1]);
+			}
+
+			@Override
+			protected void done() {
+				baixando = false;
+				try {
+					get();
+					barraProgresso.setVisible(false);
+					atualizarVersaoSelecionada();
+					iniciarJogo(); // agora o Java existe: segue o fluxo normal
+				} catch (Exception erro) {
+					Throwable causa = erro.getCause() == null ? erro : erro.getCause();
+					barraProgresso.setVisible(false);
+					atualizarVersaoSelecionada();
+					JOptionPane.showMessageDialog(janela,
+							"Não consegui baixar o Java " + javaNecessario + " sozinho:\n\n" + causa.getMessage()
+									+ "\n\nConfira a internet e clique em Jogar de novo.",
+							"Java não instalado", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+		}.execute();
 	}
 
 	/**
@@ -630,6 +713,7 @@ public class BCraftOS1 {
 	}
 
 	public static void main(String[] args) {
+		RegistroLogs.iniciar();
 		SwingUtilities.invokeLater(BCraftOS1::menuPrincipal);
 	}
 }

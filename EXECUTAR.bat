@@ -9,8 +9,14 @@ echo            BCraftOS - Abrindo o launcher
 echo =================================================
 echo.
 
-where javac >nul 2>&1
-if errorlevel 1 goto SEM_JAVA
+rem Garante o Java: usa o do sistema (17+) ou baixa sozinho para a pasta java\.
+if exist "%~dp0instalar-jdk.bat" (
+    call "%~dp0instalar-jdk.bat"
+    if errorlevel 1 goto SEM_JAVA
+) else (
+    where javac >nul 2>&1
+    if errorlevel 1 goto SEM_JAVA
+)
 where java >nul 2>&1
 if errorlevel 1 goto SEM_JAVA
 
@@ -18,10 +24,20 @@ echo [1/3] Compilando os arquivos...
 if not exist "saida" mkdir "saida"
 set FONTES=
 for /r "src" %%f in (*.java) do set FONTES=!FONTES! "%%f"
+if "!FONTES!"=="" (
+    rem src ainda nao existe: compila os .java soltos desta pasta (ja trazem o package certo).
+    for %%f in (*.java) do (
+        if /i not "%%f"=="InstaladorBCraftOS.java" set FONTES=!FONTES! "%%f"
+    )
+)
 if "!FONTES!"=="" goto SEM_FONTES
 
-javac -encoding UTF-8 -d "saida" !FONTES!
-if errorlevel 1 goto ERRO_COMPILAR
+if not exist "logs" mkdir "logs"
+javac -encoding UTF-8 -d "saida" !FONTES! > "logs\compilacao.log" 2>&1
+if errorlevel 1 (
+    type "logs\compilacao.log"
+    goto ERRO_COMPILAR
+)
 echo       Compilado sem erros.
 echo.
 
@@ -33,7 +49,8 @@ echo.
 
 echo [3/3] Abrindo o BCraftOS...
 echo.
-java -cp "saida" BCraftOSproject1.BCraftOS1login.BCraftOS1login
+rem O proprio launcher e leve: teto de memoria baixo e coletor simples, para sobrar RAM ao jogo (PC de 2 GB).
+java -Xmx512m -XX:+UseSerialGC -Dfile.encoding=UTF-8 -cp "saida" BCraftOSproject1.BCraftOS1login.BCraftOS1login
 if errorlevel 1 goto ERRO_ABRIR
 
 echo.
@@ -43,7 +60,7 @@ exit /b 0
 
 :SEM_JAVA
 echo.
-echo NAO ACHEI O JAVA neste computador.
+echo NAO CONSEGUI DEIXAR O JAVA PRONTO neste computador.
 echo.
 echo O launcher precisa do Java Development Kit (JDK) 17 ou mais novo.
 echo Baixe de graca aqui: https://adoptium.net/temurin/releases/
@@ -54,16 +71,15 @@ exit /b 1
 
 :SEM_FONTES
 echo.
-echo NAO ACHEI os arquivos .java na pasta src.
+echo NAO ACHEI os arquivos .java do launcher.
 echo.
-echo Se eles nao estiverem ai, rode primeiro o instalador:
-echo    java InstaladorBCraftOS
+echo Rode primeiro o instalador: inicializador_do_instalador.bat
 pause
 exit /b 1
 
 :ERRO_COMPILAR
 echo.
-echo DEU ERRO AO COMPILAR. As mensagens estao logo acima.
+echo DEU ERRO AO COMPILAR. As mensagens estao acima e salvas em logs\compilacao.log
 echo.
 echo O motivo mais comum e um arquivo repetido do tipo BCraftOS1(1).java.
 echo Nesse caso apague o arquivo com o (1) no nome e rode de novo.

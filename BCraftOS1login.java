@@ -284,6 +284,7 @@ public class BCraftOS1login extends JFrame {
 	}
 
 	public static void main(String[] args) {
+		BCraftOSproject1.BCraftOS1.RegistroLogs.iniciar(); // copia o console para logs/
 		SwingUtilities.invokeLater(() -> new BCraftOS1login().setVisible(true));
 	}
 }

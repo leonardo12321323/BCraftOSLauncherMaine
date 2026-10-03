@@ -50,6 +50,7 @@ public class GerenciadorDownloads {
 			return pastaVersao;
 		}
 
+		garantirEspaco(pastaVersao, 300);
 		pastaVersao.mkdirs();
 		File pastaTemporaria = new File(pastaVersao, ".baixando");
 		apagarPasta(pastaTemporaria);
@@ -135,34 +136,114 @@ public class GerenciadorDownloads {
 	}
 
 	private static void baixar(String endereco, File destino, Progresso progresso) throws Exception {
+		baixarArquivo(endereco, destino, progresso, 5, 75, "Baixando");
+	}
+
+	/** Quantas vezes tenta de novo quando a internet cai no meio do download. */
+	private static final int TENTATIVAS = 4;
+
+	/**
+	 * Baixa um arquivo grande sem estourar a memória: lê em blocos pequenos e grava direto no disco.
+	 * Se a conexão cair, tenta de novo e RETOMA de onde parou (arquivo .part), em vez de recomeçar.
+	 * Funciona bem até em PCs com 2 GB de RAM, porque nada fica guardado na memória.
+	 *
+	 * @param pctInicio e pctFim a faixa da barra de progresso que este download ocupa
+	 */
+	public static void baixarArquivo(String endereco, File destino, Progresso progresso, int pctInicio,
+			int pctFim, String verbo) throws Exception {
+		File pasta = destino.getAbsoluteFile().getParentFile();
+		pasta.mkdirs();
+		File parcial = new File(pasta, destino.getName() + ".part");
+		Exception ultimoErro = null;
+
+		for (int tentativa = 1; tentativa <= TENTATIVAS; tentativa++) {
+			try {
+				baixarUmaVez(endereco, parcial, progresso, pctInicio, pctFim, verbo);
+				java.nio.file.Files.move(parcial.toPath(), destino.toPath(),
+						java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+				return;
+			} catch (IllegalStateException definitivo) {
+				// 404 e similares: tentar de novo não adianta.
+				throw new IOException(definitivo.getMessage());
+			} catch (IOException falhou) {
+				ultimoErro = falhou;
+				if (tentativa < TENTATIVAS) {
+					progresso.atualizar("A conexão falhou. Tentando de novo (" + (tentativa + 1) + "/"
+							+ TENTATIVAS + ")...", pctInicio);
+					Thread.sleep(1500L * tentativa);
+				}
+			}
+		}
+		throw new IOException("Não consegui baixar " + endereco + " depois de " + TENTATIVAS
+				+ " tentativas. Confira a internet e tente de novo. Motivo: "
+				+ (ultimoErro == null ? "desconhecido" : ultimoErro.getMessage()));
+	}
+
+	private static void baixarUmaVez(String endereco, File parcial, Progresso progresso, int pctInicio,
+			int pctFim, String verbo) throws Exception {
+		long jaTem = parcial.isFile() ? parcial.length() : 0;
 		HttpURLConnection conexao = CatalogoVersoes.abrir(endereco);
+		if (jaTem > 0) {
+			conexao.setRequestProperty("Range", "bytes=" + jaTem + "-");
+		}
 		int codigo = conexao.getResponseCode();
-		if (codigo != HttpURLConnection.HTTP_OK) {
+		if (codigo == 416) { // o arquivo parcial já estava completo
 			conexao.disconnect();
-			throw new IOException("O servidor respondeu " + codigo + " ao baixar " + endereco);
+			return;
+		}
+		if (codigo != HttpURLConnection.HTTP_OK && codigo != HttpURLConnection.HTTP_PARTIAL) {
+			conexao.disconnect();
+			String msg = "O servidor respondeu " + codigo + " ao baixar " + endereco;
+			if (codigo >= 400 && codigo < 500 && codigo != 408 && codigo != 429) {
+				throw new IllegalStateException(msg);
+			}
+			throw new IOException(msg);
 		}
 
-		long total = conexao.getContentLengthLong();
+		boolean retomou = codigo == HttpURLConnection.HTTP_PARTIAL;
+		long inicio = retomou ? jaTem : 0;
+		long restante = conexao.getContentLengthLong();
+		long total = restante > 0 ? restante + inicio : -1;
+
 		try (InputStream entrada = conexao.getInputStream();
-				FileOutputStream saida = new FileOutputStream(destino)) {
-			byte[] buffer = new byte[16384];
-			long baixado = 0;
+				FileOutputStream saida = new FileOutputStream(parcial, retomou)) {
+			byte[] buffer = new byte[32768];
+			long baixado = inicio;
 			int lido;
 			int ultimoPercentual = -1;
 			while ((lido = entrada.read(buffer)) != -1) {
 				saida.write(buffer, 0, lido);
 				baixado += lido;
 				if (total > 0) {
-					int percentual = 5 + (int) (baixado * 70 / total);
+					int percentual = pctInicio + (int) ((pctFim - pctInicio) * baixado / total);
 					if (percentual != ultimoPercentual) {
 						ultimoPercentual = percentual;
-						progresso.atualizar("Baixando... " + (baixado / 1024 / 1024) + " MB de "
+						progresso.atualizar(verbo + "... " + (baixado / 1024 / 1024) + " MB de "
 								+ (total / 1024 / 1024) + " MB", percentual);
 					}
 				}
 			}
+			if (total > 0 && baixado < total) {
+				throw new IOException("O download parou no meio (" + baixado + " de " + total + " bytes).");
+			}
 		} finally {
 			conexao.disconnect();
+		}
+	}
+
+	/** Confere se há espaço livre no disco antes de baixar, para não falhar no meio. */
+	public static void garantirEspaco(File pasta, long megabytes) throws IOException {
+		File existente = pasta.getAbsoluteFile();
+		while (existente != null && !existente.exists()) {
+			existente = existente.getParentFile();
+		}
+		if (existente == null) {
+			return;
+		}
+		long livre = existente.getUsableSpace() / 1024 / 1024;
+		if (livre > 0 && livre < megabytes) {
+			throw new IOException("Pouco espaço em disco: restam " + livre + " MB e preciso de pelo menos "
+					+ megabytes + " MB livres em " + existente + ". Libere espaço e tente de novo.");
 		}
 	}
 

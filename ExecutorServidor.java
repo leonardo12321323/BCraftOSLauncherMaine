@@ -170,7 +170,11 @@ public class ExecutorServidor {
 	private static List<String> montarComando(GerenciadorServidores.Servidor servidor, File java, boolean proxy) {
 		List<String> comando = new ArrayList<>();
 		comando.add(java.getAbsolutePath());
-		comando.add("-Xmx" + ramValida(servidor.ram()));
+		String ram = PerfilMemoria.limitarRam(ramValida(servidor.ram()));
+		comando.add("-Xmx" + ram);
+		if (PerfilMemoria.detectar().economico()) {
+			comando.add("-XX:+UseSerialGC"); // PC com pouca RAM: coletor de lixo mais leve
+		}
 
 		String args = servidor.args();
 		if (args != null) {

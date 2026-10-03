@@ -50,7 +50,7 @@ public class InstaladorBCraftOS {
 	/** Pastas que o launcher usa em tempo de execução. */
 	private static final String[] PASTAS_DO_LAUNCHER = {
 			"versoes", "versoes/Forge", "versoes/Fabric", "versoes/NeoForge",
-			"servidores", "usuarios"
+			"servidores", "usuarios", "java"
 	};
 
 	/** Arquivos .java que compõem o launcher e o pacote de cada um. */
@@ -69,6 +69,9 @@ public class InstaladorBCraftOS {
 			{"ExecutorServidor.java", "BCraftOSproject1.BCraftOS1"},
 			{"ConsoleServidor.java", "BCraftOSproject1.BCraftOS1"},
 			{"TelaServidores.java", "BCraftOSproject1.BCraftOS1"},
+			{"PerfilMemoria.java", "BCraftOSproject1.BCraftOS1"},
+			{"InstaladorJava.java", "BCraftOSproject1.BCraftOS1"},
+			{"RegistroLogs.java", "BCraftOSproject1.BCraftOS1"},
 			{"BCraftOS1login.java", "BCraftOSproject1.BCraftOS1login"},
 			{"InfoUsuarios.java", "BCraftOSproject1.BCraftOS1login"}
 	};
@@ -78,7 +81,7 @@ public class InstaladorBCraftOS {
 			"BCraftOS1", "CatalogoVersoes", "GerenciadorDownloads", "GerenciadorVersoes",
 			"GerenciadorModpacks", "MinecraftLauncher", "ModoNormal", "MiniJson", "OrganizadorPastas",
 			"CatalogoServidores", "GerenciadorServidores", "ExecutorServidor", "ConsoleServidor",
-			"TelaServidores", "BCraftOS1login", "InfoUsuarios");
+			"TelaServidores", "PerfilMemoria", "InstaladorJava", "RegistroLogs", "BCraftOS1login", "InfoUsuarios");
 
 	/** Nomes que NUNCA são sobrescritos, porque são de outro sistema ou de teste. */
 	private static final List<String> NAO_INSTALAR = List.of(
