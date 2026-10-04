@@ -40,10 +40,12 @@ public class ExecutorServidor {
 		final Process processo;
 		final BufferedWriter entrada;
 		final boolean proxy;
+		final long ramMb;
 
-		Processo(Process processo, boolean proxy) {
+		Processo(Process processo, boolean proxy, long ramMb) {
 			this.processo = processo;
 			this.proxy = proxy;
+			this.ramMb = ramMb;
 			this.entrada = new BufferedWriter(
 					new OutputStreamWriter(processo.getOutputStream(), StandardCharsets.UTF_8));
 		}
@@ -109,6 +111,27 @@ public class ExecutorServidor {
 
 		File java = executavelJava(servidor.tipo, servidor.versaoMc);
 
+		// Servidor importado: na primeira vez, arruma a pasta (move o que não é usado, nada é apagado).
+		if ("true".equals(servidor.config.getProperty("limpezaPendente"))) {
+			ImportadorServidores.limparEArrumar(servidor);
+		}
+
+		// Orçamento de RAM: a soma dos servidores ligados não passa do limite (65% da RAM, até 10 GB).
+		long pedidoMb = PerfilMemoria.paraMb(PerfilMemoria.limitarRam(ramValida(servidor.ram())));
+		long emUsoMb = 0;
+		for (Processo ligado : EM_EXECUCAO.values()) {
+			if (ligado.processo.isAlive()) {
+				emUsoMb += ligado.ramMb;
+			}
+		}
+		long orcamentoMb = PerfilMemoria.orcamentoServidoresMb();
+		if (emUsoMb + pedidoMb > orcamentoMb) {
+			throw new IllegalStateException("Faltou RAM no orçamento dos servidores. Este pede " + pedidoMb
+					+ " MB e já há " + emUsoMb + " MB em uso, e o limite é " + orcamentoMb + " MB "
+					+ "(65% da RAM do computador, até 10 GB). Desligue outro servidor ou reduza a \"ram\" "
+					+ "no arquivo bcraftos-servidor.properties deste servidor.");
+		}
+
 		String arquivoDeInicio = servidor.args() != null ? servidor.args() : servidor.jar();
 		if (arquivoDeInicio == null || !new File(servidor.pasta, arquivoDeInicio).isFile()) {
 			throw new IllegalStateException("Não achei os arquivos do servidor em " + servidor.pasta.getName()
@@ -141,7 +164,7 @@ public class ExecutorServidor {
 		}
 
 		File chave = servidor.pasta.getAbsoluteFile();
-		EM_EXECUCAO.put(chave, new Processo(processo, proxy));
+		EM_EXECUCAO.put(chave, new Processo(processo, proxy, pedidoMb));
 		registrarGancho();
 
 		Thread leitor = new Thread(() -> {
@@ -171,10 +194,12 @@ public class ExecutorServidor {
 		List<String> comando = new ArrayList<>();
 		comando.add(java.getAbsolutePath());
 		String ram = PerfilMemoria.limitarRam(ramValida(servidor.ram()));
+		long xmxMb = PerfilMemoria.paraMb(ram);
+		// Começa com um quarto da RAM e cresce até o teto: o servidor não reserva tudo de uma vez.
+		long xmsMb = Math.min(xmxMb, Math.max(512, xmxMb / 4));
+		comando.add("-Xms" + xmsMb + "M");
 		comando.add("-Xmx" + ram);
-		if (PerfilMemoria.detectar().economico()) {
-			comando.add("-XX:+UseSerialGC"); // PC com pouca RAM: coletor de lixo mais leve
-		}
+		comando.addAll(PerfilMemoria.flagsServidor(proxy));
 
 		String args = servidor.args();
 		if (args != null) {

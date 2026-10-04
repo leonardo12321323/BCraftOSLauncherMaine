@@ -41,7 +41,7 @@ fi
 if [ -z "$ARQUIVOS" ]; then
   echo
   echo "NAO ACHEI os arquivos .java do launcher."
-  echo "Rode primeiro o instalador:  ./inicializador_do_instalador.sh"
+  echo "Rode primeiro o instalador (pasta BCraftOSInstalador): ./inicializador_do_instalador.sh"
   pausar; exit 1
 fi
 

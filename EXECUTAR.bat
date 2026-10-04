@@ -73,7 +73,7 @@ exit /b 1
 echo.
 echo NAO ACHEI os arquivos .java do launcher.
 echo.
-echo Rode primeiro o instalador: inicializador_do_instalador.bat
+echo Rode primeiro o instalador (pasta BCraftOSInstalador): inicializador_do_instalador.bat
 pause
 exit /b 1
 

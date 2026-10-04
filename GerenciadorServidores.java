@@ -230,6 +230,11 @@ public class GerenciadorServidores {
 					instalarJarDireto(pasta, config, CatalogoServidores.enderecoFabric(versao.versaoMc),
 							"fabric-server-launcher.jar", "Fabric " + versao.versaoMc, progresso);
 					break;
+				case CatalogoServidores.ARCLIGHT:
+					// Um único .jar que roda o loader escolhido; baixa o resto na primeira vez que liga.
+					instalarJarDireto(pasta, config, CatalogoServidores.enderecoArclight(versao.codigo),
+							"arclight.jar", "Arclight " + versao.versaoMc, progresso);
+					break;
 				case CatalogoServidores.VELOCITY:
 					instalarJarDireto(pasta, config,
 							CatalogoServidores.enderecoPelaPaperMC("velocity", versao.codigo),
@@ -397,8 +402,7 @@ public class GerenciadorServidores {
 
 	/** eula.txt, server.properties e a pasta de plugins/mods. O proxy não usa nenhum dos dois primeiros. */
 	private static void escreverArquivosBase(File pasta, String tipo, Opcoes opcoes) throws IOException {
-		String extra = CatalogoServidores.pastaExtra(tipo);
-		if (extra != null) {
+		for (String extra : CatalogoServidores.pastasExtras(tipo)) {
 			new File(pasta, extra).mkdirs();
 		}
 		if (CatalogoServidores.ehProxy(tipo)) {
@@ -416,10 +420,13 @@ public class GerenciadorServidores {
 			props.append("enforce-secure-profile=false\n");
 		}
 		props.append("motd=Servidor BCraftOS\n");
+		// Distâncias menores deixam o servidor bem mais leve (e dá para aumentar depois se sobrar).
+		props.append("view-distance=8\n");
+		props.append("simulation-distance=5\n");
 		Files.writeString(new File(pasta, "server.properties").toPath(), props.toString(), StandardCharsets.UTF_8);
 	}
 
-	private static void salvarConfig(File pasta, Properties config) throws IOException {
+	static void salvarConfig(File pasta, Properties config) throws IOException {
 		try (Writer escritor = Files.newBufferedWriter(new File(pasta, ARQUIVO_CONFIG).toPath(),
 				StandardCharsets.UTF_8)) {
 			config.store(escritor, "BCraftOS - dados deste servidor. Pode editar a RAM e a porta aqui.");

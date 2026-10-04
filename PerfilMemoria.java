@@ -156,6 +156,76 @@ public final class PerfilMemoria {
 		return avisos;
 	}
 
+	// ------------------------------------------------------------------
+	// Servidores (Paper, Forge, Fabric...): orçamento de RAM e JVM leve
+	// ------------------------------------------------------------------
+
+	/**
+	 * Quanto da RAM do computador todos os servidores ligados juntos podem usar: 65% da RAM, no
+	 * máximo 10 GB. Num PC de 15 GB isso dá cerca de 9,7 GB; o resto fica para o sistema e para o jogo.
+	 */
+	public static long orcamentoServidoresMb() {
+		return Math.max(512, Math.min(10240, ramTotalMb() * 65 / 100));
+	}
+
+	/** RAM sugerida para um servidor novo, tirada do orçamento: mods pedem mais que plugins. */
+	public static String ramPadraoServidor(boolean mods, boolean proxy) {
+		if (proxy) {
+			return "512M";
+		}
+		long orcamento = orcamentoServidoresMb();
+		long mb = mods ? Math.max(1024, Math.min(6144, orcamento * 40 / 100))
+				: Math.max(1024, Math.min(4096, orcamento * 30 / 100));
+		mb = (mb + 255) / 512 * 512; // arredonda para múltiplos de 512 MB
+		return mb % 1024 == 0 ? (mb / 1024) + "G" : mb + "M";
+	}
+
+	/** Converte "4G" ou "512M" em MB. Valor inválido vira 2048. */
+	public static long paraMb(String ram) {
+		if (ram == null || !ram.matches("[0-9]{1,5}[MmGg]")) {
+			return 2048;
+		}
+		long n = Long.parseLong(ram.substring(0, ram.length() - 1));
+		return Character.toUpperCase(ram.charAt(ram.length() - 1)) == 'G' ? n * 1024 : n;
+	}
+
+	/**
+	 * Flags da JVM de um servidor: coletor de lixo G1 ajustado para pausas curtas (as flags
+	 * conhecidas do Paper/Aikar, sem o AlwaysPreTouch, que reservaria toda a RAM já ao ligar).
+	 * Em PC com pouca RAM usa o coletor serial, que é bem mais leve.
+	 */
+	public static List<String> flagsServidor(boolean proxy) {
+		List<String> f = new ArrayList<>();
+		if (economicoAgora()) {
+			f.add("-XX:+UseSerialGC");
+			return f;
+		}
+		f.add("-XX:+UseG1GC");
+		f.add("-XX:+ParallelRefProcEnabled");
+		f.add("-XX:MaxGCPauseMillis=200");
+		f.add("-XX:+DisableExplicitGC");
+		f.add("-XX:+PerfDisableSharedMem");
+		if (!proxy) {
+			f.add("-XX:+UnlockExperimentalVMOptions");
+			f.add("-XX:G1NewSizePercent=30");
+			f.add("-XX:G1MaxNewSizePercent=40");
+			f.add("-XX:G1HeapRegionSize=8M");
+			f.add("-XX:G1ReservePercent=20");
+			f.add("-XX:G1HeapWastePercent=5");
+			f.add("-XX:G1MixedGCCountTarget=4");
+			f.add("-XX:InitiatingHeapOccupancyPercent=15");
+			f.add("-XX:G1MixedGCLiveThresholdPercent=90");
+			f.add("-XX:G1RSetUpdatingPauseTimePercent=5");
+			f.add("-XX:SurvivorRatio=32");
+			f.add("-XX:MaxTenuringThreshold=1");
+		}
+		return f;
+	}
+
+	private static boolean economicoAgora() {
+		return ramTotalMb() <= 2560;
+	}
+
 	/** Limita a RAM pedida para um servidor (ex.: "2G") a ~55% da RAM do computador. */
 	public static String limitarRam(String pedida) {
 		if (pedida == null || !pedida.matches("[0-9]{1,5}[MmGg]")) {

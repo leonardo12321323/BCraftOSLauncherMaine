@@ -48,8 +48,10 @@ public class CatalogoServidores {
 	public static final String NEOFORGE = CatalogoVersoes.NEOFORGE;
 	public static final String FABRIC = CatalogoVersoes.FABRIC;
 	public static final String VELOCITY = "Velocity";
+	/** Híbrido: roda plugins (Bukkit/Spigot/Paper) E mods (Forge, NeoForge ou Fabric) no mesmo servidor. */
+	public static final String ARCLIGHT = "Arclight";
 
-	public static final String[] TIPOS = {PAPER, PURPUR, SPIGOT, VANILLA, FORGE, NEOFORGE, FABRIC, VELOCITY};
+	public static final String[] TIPOS = {PAPER, PURPUR, SPIGOT, VANILLA, FORGE, NEOFORGE, FABRIC, ARCLIGHT, VELOCITY};
 
 	public static final String URL_BUILDTOOLS =
 			"https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar";
@@ -65,7 +67,7 @@ public class CatalogoServidores {
 	private static Map<String, String> versoesMojang;
 
 	/** O que o servidor traz para o jogador colocar: plugins, mods ou nada. */
-	public enum Categoria { PLUGINS, MODS, PURO, PROXY }
+	public enum Categoria { PLUGINS, MODS, HIBRIDO, PURO, PROXY }
 
 	public static Categoria categoria(String tipo) {
 		switch (tipo) {
@@ -77,6 +79,8 @@ public class CatalogoServidores {
 			case NEOFORGE:
 			case FABRIC:
 				return Categoria.MODS;
+			case ARCLIGHT:
+				return Categoria.HIBRIDO;
 			case VELOCITY:
 				return Categoria.PROXY;
 			default:
@@ -91,9 +95,20 @@ public class CatalogoServidores {
 				return "plugins";
 			case MODS:
 				return "mods";
+			case HIBRIDO:
+				return "plugins"; // a principal; o mods/ também é criado (veja pastasExtras)
 			default:
 				return null;
 		}
+	}
+
+	/** Todas as pastas onde o jogador coloca arquivos: uma para a maioria, duas para o Arclight. */
+	public static String[] pastasExtras(String tipo) {
+		if (categoria(tipo) == Categoria.HIBRIDO) {
+			return new String[]{"plugins", "mods"};
+		}
+		String unica = pastaExtra(tipo);
+		return unica == null ? new String[0] : new String[]{unica};
 	}
 
 	public static boolean ehProxy(String tipo) {
@@ -116,6 +131,10 @@ public class CatalogoServidores {
 				return "Servidor com mods do NeoForge (pasta mods).";
 			case FABRIC:
 				return "Servidor leve com mods do Fabric (pasta mods). A primeira vez que liga baixa o resto.";
+			case ARCLIGHT:
+				return "[BUILD DE TESTE] Híbrido: aceita plugins (pasta plugins) E mods (pasta mods) no mesmo servidor. "
+						+ "Combinar os dois pode dar incompatibilidades. Só há versões a partir da 1.18; na 1.21 só a 1.21.1. "
+						+ "A primeira vez que liga baixa o resto.";
 			case VELOCITY:
 				return "Proxy: liga vários servidores em um só endereço. Não é um servidor de jogo.";
 			default:
@@ -140,6 +159,8 @@ public class CatalogoServidores {
 				return listarPurpur();
 			case SPIGOT:
 				return listarSpigot();
+			case ARCLIGHT:
+				return listarArclight();
 			case VELOCITY:
 				return listarVelocity();
 			default:
@@ -226,6 +247,104 @@ public class CatalogoServidores {
 		}
 		ordenar(itens);
 		return itens;
+	}
+
+	// ------------------------------------------------------------------
+	// Arclight (híbrido: plugins + mods)
+	// ------------------------------------------------------------------
+
+	private static final String ARCLIGHT_RELEASES =
+			"https://api.github.com/repos/IzzelAliz/Arclight/releases?per_page=100";
+
+	/** codigo da versão -> endereço do .jar, preenchido quando a lista é montada. */
+	private static final Map<String, String> ENDERECOS_ARCLIGHT = new java.util.concurrent.ConcurrentHashMap<>();
+
+	private static List<CatalogoVersoes.ItemVersao> listarArclight() throws Exception {
+		return interpretarArclight(baixarTexto(ARCLIGHT_RELEASES));
+	}
+
+	/**
+	 * Lê a lista de lançamentos do Arclight no GitHub. Cada lançamento traz um .jar por loader
+	 * (Forge, NeoForge, Fabric); o Minecraft de cada um vem do texto do lançamento ou do nome do arquivo.
+	 * Fica só o lançamento mais novo de cada combinação (Minecraft + loader), sem pré-lançamentos.
+	 */
+	static List<CatalogoVersoes.ItemVersao> interpretarArclight(String json) {
+		List<CatalogoVersoes.ItemVersao> itens = new ArrayList<>();
+		java.util.Set<String> vistos = new java.util.HashSet<>();
+		java.util.regex.Pattern mcNoTexto = java.util.regex.Pattern
+				.compile("Minecraft\\s+(1\\.\\d{1,2}(?:\\.\\d{1,2})?|\\d{2}\\.\\d{1,2}(?:\\.\\d{1,2})?)");
+		java.util.regex.Pattern mcNoNome = java.util.regex.Pattern
+				.compile("(?<![0-9.])(1\\.(?:1[2-9]|2[0-9])(?:\\.\\d{1,2})?)(?![0-9])");
+
+		for (Object item : MiniJson.lista(MiniJson.ler(json))) {
+			Map<String, Object> lancamento = MiniJson.objeto(item);
+			if (lancamento == null || Boolean.TRUE.equals(lancamento.get("prerelease"))
+					|| Boolean.TRUE.equals(lancamento.get("draft"))) {
+				continue;
+			}
+			String tag = MiniJson.texto(lancamento.get("tag_name"));
+			String corpo = MiniJson.texto(lancamento.get("body"));
+			String mcDoCorpo = null;
+			if (corpo != null) {
+				java.util.regex.Matcher m = mcNoTexto.matcher(corpo);
+				if (m.find()) {
+					mcDoCorpo = m.group(1);
+				}
+			}
+			for (Object a : MiniJson.lista(lancamento.get("assets"))) {
+				Map<String, Object> arquivo = MiniJson.objeto(a);
+				if (arquivo == null) {
+					continue;
+				}
+				String nome = MiniJson.texto(arquivo.get("name"));
+				String url = MiniJson.texto(arquivo.get("browser_download_url"));
+				if (nome == null || url == null || !nome.toLowerCase(java.util.Locale.ROOT).endsWith(".jar")) {
+					continue;
+				}
+				String minusculo = nome.toLowerCase(java.util.Locale.ROOT);
+				String loader;
+				if (minusculo.contains("neoforge")) {
+					loader = "NeoForge";
+				} else if (minusculo.contains("forge")) {
+					loader = "Forge";
+				} else if (minusculo.contains("fabric")) {
+					loader = "Fabric";
+				} else {
+					continue; // outros arquivos (ex.: código-fonte) não servem para rodar
+				}
+				String mc = mcDoCorpo;
+				java.util.regex.Matcher doNome = mcNoNome.matcher(nome);
+				if (doNome.find()) {
+					mc = doNome.group(1); // o nome do arquivo é mais confiável que o texto
+				}
+				if (mc == null || !vistos.add(mc + "|" + loader)) {
+					continue; // sem versão do jogo, ou já pegou um lançamento mais novo desta combinação
+				}
+				String codigo = loader + "-" + mc + "-" + (tag == null ? "build" : tag.replaceAll("[^A-Za-z0-9._-]", "_"));
+				ENDERECOS_ARCLIGHT.put(codigo, url);
+				itens.add(new CatalogoVersoes.ItemVersao(codigo,
+						"Arclight (teste) " + mc + "  ·  " + loader + "  ·  " + (tag == null ? "" : tag), mc));
+			}
+		}
+		itens.sort((x, y) -> {
+			int c = CatalogoVersoes.comparar(y.versaoMc, x.versaoMc);
+			return c != 0 ? c : x.rotulo.compareTo(y.rotulo);
+		});
+		return itens;
+	}
+
+	/** Endereço do .jar do Arclight para o código escolhido na lista. */
+	public static String enderecoArclight(String codigo) throws Exception {
+		String url = ENDERECOS_ARCLIGHT.get(codigo);
+		if (url == null) {
+			listarArclight(); // a lista ainda não foi montada nesta execução
+			url = ENDERECOS_ARCLIGHT.get(codigo);
+		}
+		if (url == null) {
+			throw new IOException("Não achei o download do Arclight " + codigo + " no GitHub. "
+					+ "Escolha a versão de novo na lista.");
+		}
+		return url;
 	}
 
 	/** O Velocity não segue as versões do Minecraft: cada linha é uma versão do próprio proxy. */

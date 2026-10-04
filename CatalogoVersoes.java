@@ -269,7 +269,7 @@ public class CatalogoVersoes {
 	 *   "26.1.2.95" -> 26.1.2
 	 * Os builds "47.x" são do NeoForge da 1.20.1, que usa outro sistema e não entram na lista.
 	 */
-	private static String converterVersaoNeoForge(String versao) {
+	static String converterVersaoNeoForge(String versao) {
 		String[] partes = versao.replace("-beta", "").split("\\.");
 		if (partes.length < 2) {
 			return null;

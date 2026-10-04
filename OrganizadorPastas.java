@@ -186,7 +186,7 @@ public class OrganizadorPastas {
 				"                          ModoNormal.java, MiniJson.java, CatalogoServidores.java,",
 				"                          GerenciadorServidores.java, ExecutorServidor.java,",
 				"                          ConsoleServidor.java, TelaServidores.java,",
-				"                          PerfilMemoria.java, InstaladorJava.java, RegistroLogs.java",
+				"                          PerfilMemoria.java, InstaladorJava.java, RegistroLogs.java, ImportadorServidores.java",
 				"    BCraftOS1login/    -> BCraftOS1login.java, InfoUsuarios.java",
 				"  versoes/                         (criada sozinha, com uma pasta por loader)",
 				"    Forge/",

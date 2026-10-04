@@ -55,7 +55,7 @@ public class TelaServidores {
 	private static final Font FONTE_CAMPO = new Font("Arial", Font.PLAIN, 14);
 	private static final int LARGURA = 420;
 
-	private static final String[] OPCOES_RAM = {"512M", "1G", "2G", "3G", "4G", "6G", "8G"};
+	private static final String[] OPCOES_RAM = {"512M", "1G", "1536M", "2G", "2560M", "3G", "4G", "5G", "6G", "8G"};
 
 	private final JFrame janela;
 	private final JPanel painel;
@@ -78,6 +78,7 @@ public class TelaServidores {
 	private JButton botaoIniciar;
 	private JButton botaoPasta;
 	private JButton botaoExcluir;
+	private JButton botaoImportar;
 
 	private CatalogoVersoes.ItemVersao versaoSelecionada;
 	private boolean criando;
@@ -258,6 +259,11 @@ public class TelaServidores {
 		botaoIniciar.addActionListener(e -> iniciarServidor());
 		linha = adicionar(p, c, linha, botaoIniciar, 8);
 
+		botaoImportar = new JButton("IMPORTAR SERVIDOR EXISTENTE");
+		estilizarBotao(botaoImportar, false);
+		botaoImportar.addActionListener(e -> importarServidor());
+		linha = adicionar(p, c, linha, botaoImportar, 8);
+
 		JPanel linhaBotoes = new JPanel(new GridLayout(1, 2, 8, 0));
 		linhaBotoes.setOpaque(false);
 		botaoPasta = new JButton("Abrir pasta");
@@ -374,7 +380,7 @@ public class TelaServidores {
 
 		boolean proxy = categoria == CatalogoServidores.Categoria.PROXY;
 		campoPorta.setText(proxy ? "25577" : "25565");
-		seletorRam.setSelectedItem(proxy ? "512M" : categoria == CatalogoServidores.Categoria.MODS ? "4G" : "2G");
+		seletorRam.setSelectedItem(PerfilMemoria.ramPadraoServidor(categoria == CatalogoServidores.Categoria.MODS || categoria == CatalogoServidores.Categoria.HIBRIDO, proxy));
 
 		// O proxy não tem EULA nem modo online: a configuração dele fica no velocity.toml.
 		checkEula.setEnabled(!proxy);
@@ -534,6 +540,11 @@ public class TelaServidores {
 		if (extra == null) {
 			return base + "É só clicar em INICIAR SERVIDOR.";
 		}
+		if (CatalogoServidores.categoria(servidor.tipo) == CatalogoServidores.Categoria.HIBRIDO) {
+			return base + "Coloque os plugins (.jar) na pasta \"plugins\" e os mods (.jar) na pasta \"mods\" "
+					+ "do servidor (botão Abrir pasta) e clique em INICIAR SERVIDOR. "
+					+ "A primeira vez demora, porque ele baixa o restante.";
+		}
 		return base + "Coloque os " + extra + " (.jar) na pasta \"" + extra + "\" do servidor "
 				+ "(botão Abrir pasta) e clique em INICIAR SERVIDOR.";
 	}
@@ -581,7 +592,11 @@ public class TelaServidores {
 
 		String extra = CatalogoServidores.pastaExtra(s.tipo);
 		if (extra != null) {
-			statusServidor.setText("Os " + extra + " vão em: " + caminhoCurto(new File(s.pasta, extra)));
+			if (CatalogoServidores.categoria(s.tipo) == CatalogoServidores.Categoria.HIBRIDO) {
+				statusServidor.setText("Plugins em plugins/ e mods em mods/ (dentro da pasta do servidor).");
+			} else {
+				statusServidor.setText("Os " + extra + " vão em: " + caminhoCurto(new File(s.pasta, extra)));
+			}
 		} else if (CatalogoServidores.ehProxy(s.tipo)) {
 			statusServidor.setText("Proxy: a configuração fica no velocity.toml, dentro da pasta.");
 		} else {
@@ -597,6 +612,99 @@ public class TelaServidores {
 		} catch (IllegalArgumentException e) {
 			return arquivo.getAbsolutePath();
 		}
+	}
+
+	/**
+	 * Traz para o launcher um servidor que ele não criou. Pergunta o tipo e a versão (já preenchidos
+	 * com o que foi descoberto na pasta) e se é para copiar ou mover. Na primeira vez que o servidor
+	 * ligar, o launcher arruma a pasta: nada é apagado, o que não é usado vai para uma pasta separada.
+	 */
+	private void importarServidor() {
+		javax.swing.JFileChooser escolha = new javax.swing.JFileChooser(System.getProperty("user.home"));
+		escolha.setDialogTitle("Escolha a pasta do servidor que você quer importar");
+		escolha.setFileSelectionMode(javax.swing.JFileChooser.DIRECTORIES_ONLY);
+		if (escolha.showOpenDialog(janela) != javax.swing.JFileChooser.APPROVE_OPTION) {
+			return;
+		}
+		File origem = escolha.getSelectedFile();
+		ImportadorServidores.Analise analise = ImportadorServidores.analisar(origem);
+
+		javax.swing.JComboBox<String> tipos = new javax.swing.JComboBox<>(CatalogoServidores.TIPOS);
+		if (analise.tipo != null) {
+			tipos.setSelectedItem(analise.tipo);
+		}
+		javax.swing.JTextField versao = new javax.swing.JTextField(analise.versaoMc == null ? "" : analise.versaoMc, 14);
+		javax.swing.JTextField nome = new javax.swing.JTextField(GerenciadorServidores.nomeSeguro(origem.getName()), 20);
+		javax.swing.JComboBox<String> modo = new javax.swing.JComboBox<>(new String[]{
+				"Copiar (mantém a pasta original)", "Mover (mais rápido; a pasta sai do lugar antigo)"});
+
+		JPanel formulario = new JPanel(new GridLayout(0, 2, 8, 6));
+		formulario.add(new JLabel("Tipo:"));
+		formulario.add(tipos);
+		formulario.add(new JLabel("Versão do Minecraft:"));
+		formulario.add(versao);
+		formulario.add(new JLabel("Nome no launcher:"));
+		formulario.add(nome);
+		formulario.add(new JLabel("O que fazer com a pasta:"));
+		formulario.add(modo);
+
+		StringBuilder texto = new StringBuilder("<html>Pasta: " + origem.getAbsolutePath()
+				+ "<br>Confira o que o launcher descobriu e corrija se precisar.");
+		for (String nota : analise.notas) {
+			texto.append("<br><b>").append(nota).append("</b>");
+		}
+		texto.append("</html>");
+		JPanel conteudo = new JPanel(new java.awt.BorderLayout(0, 10));
+		conteudo.add(new JLabel(texto.toString()), java.awt.BorderLayout.NORTH);
+		conteudo.add(formulario, java.awt.BorderLayout.CENTER);
+
+		if (JOptionPane.showConfirmDialog(janela, conteudo, "Importar servidor",
+				JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) {
+			return;
+		}
+
+		String tipo = (String) tipos.getSelectedItem();
+		boolean aceitarEula = analise.eulaAceito;
+		if (!aceitarEula && !CatalogoServidores.ehProxy(tipo)) {
+			int resposta = JOptionPane.showConfirmDialog(janela,
+					"Esse servidor ainda não aceitou o EULA do Minecraft.\n"
+							+ "Para importar, você precisa aceitar: https://aka.ms/MinecraftEULA\n\nAceitar?",
+					"EULA do Minecraft", JOptionPane.YES_NO_OPTION);
+			if (resposta != JOptionPane.YES_OPTION) {
+				return;
+			}
+			aceitarEula = true;
+		}
+
+		final boolean eula = aceitarEula;
+		final boolean mover = modo.getSelectedIndex() == 1;
+		final String versaoMc = versao.getText();
+		final String nomeFinal = nome.getText();
+		botaoImportar.setEnabled(false);
+		statusServidor.setText("Importando... (pode demorar se o mundo for grande)");
+
+		new javax.swing.SwingWorker<GerenciadorServidores.Servidor, Void>() {
+			@Override
+			protected GerenciadorServidores.Servidor doInBackground() throws Exception {
+				return ImportadorServidores.importar(origem, tipo, versaoMc, nomeFinal, mover, eula);
+			}
+
+			@Override
+			protected void done() {
+				botaoImportar.setEnabled(true);
+				try {
+					GerenciadorServidores.Servidor importado = get();
+					atualizarServidores(importado);
+					statusServidor.setText("Servidor importado. Na primeira vez que ligar, o launcher arruma a "
+							+ "pasta (nada é apagado).");
+				} catch (Exception erro) {
+					Throwable causa = erro.getCause() == null ? erro : erro.getCause();
+					atualizarBotoesDoServidor();
+					JOptionPane.showMessageDialog(janela, "Não consegui importar:\n\n" + causa.getMessage(),
+							"Importar servidor", JOptionPane.WARNING_MESSAGE);
+				}
+			}
+		}.execute();
 	}
 
 	private void iniciarServidor() {

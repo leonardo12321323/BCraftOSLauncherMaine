@@ -76,6 +76,8 @@ public class BCraftOS1 {
 
 	private static CatalogoVersoes.ItemVersao versaoSelecionada;
 	private static boolean baixando;
+	/** Verdadeiro enquanto o Minecraft está aberto. O launcher continua na tela durante esse tempo. */
+	private static boolean jogando;
 
 	// Abas do topo: "Jogar" (cliente) e "Servidor"
 	private static CardLayout cartoes;
@@ -542,7 +544,7 @@ public class BCraftOS1 {
 			botaoJogar.setEnabled(false);
 			return;
 		}
-		botaoJogar.setEnabled(!baixando);
+		botaoJogar.setEnabled(!baixando && !jogando);
 		statusModpack.setText("Modpack selecionado: " + escolhido
 				+ ". Coloque os .jar dentro da pasta modpacks dessa versão.");
 	}
@@ -577,10 +579,18 @@ public class BCraftOS1 {
 			return;
 		}
 
-		janela.setVisible(false);
+		// O launcher NÃO fecha: assim dá para ligar e desligar servidores enquanto joga.
+		// Só o botão Jogar fica travado até o Minecraft fechar, para não abrir dois jogos.
 		try {
 			GerenciadorModpacks.aplicarModpack(pastaVersao, pastaMDK, modpackSelecionado);
-			Runnable aoFinalizar = () -> SwingUtilities.invokeLater(BCraftOS1::menuPrincipal);
+			jogando = true;
+			botaoJogar.setEnabled(false);
+			statusVersao.setText("Minecraft aberto. O launcher continua aqui: dá para usar a aba Servidor.");
+			Runnable aoFinalizar = () -> SwingUtilities.invokeLater(() -> {
+				jogando = false;
+				atualizarVersaoSelecionada();
+				atualizarStatusModpack();
+			});
 			if (checkModoNormal.isSelected() && ModoNormal.disponivelPara(loader, versaoSelecionada.versaoMc)) {
 				ModoNormal.iniciar(pastaMDK, versaoSelecionada.versaoMc, versaoSelecionada.codigo,
 						MinecraftLauncher.nickValido(jogadorAutenticadoID), aoFinalizar);
@@ -589,7 +599,9 @@ public class BCraftOS1 {
 			}
 		} catch (IllegalStateException diagnostico) {
 			// Aqui chega o resultado da checagem: o motivo real, em vez de um erro seco.
-			janela.setVisible(true);
+			jogando = false;
+			atualizarVersaoSelecionada();
+			atualizarStatusModpack();
 			JOptionPane.showMessageDialog(janela, diagnostico.getMessage(),
 					"Não foi possível iniciar", JOptionPane.WARNING_MESSAGE);
 		} catch (IOException ex) {
@@ -597,7 +609,9 @@ public class BCraftOS1 {
 			JOptionPane.showMessageDialog(null,
 					"Falha ao preparar o modpack: " + ex.getMessage(),
 					"Erro", JOptionPane.ERROR_MESSAGE);
-			janela.setVisible(true);
+			jogando = false;
+			atualizarVersaoSelecionada();
+			atualizarStatusModpack();
 		}
 	}
 
