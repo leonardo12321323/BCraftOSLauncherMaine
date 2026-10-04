@@ -30,30 +30,60 @@ elif ! command -v javac >/dev/null 2>&1; then
   pausar; exit 1
 fi
 
-echo "[1/3] Compilando os arquivos..."
-mkdir -p saida
-# Usa a pasta src/ (organizada). Se ela ainda nao existe, compila os .java soltos desta pasta:
-# eles ja trazem o "package" certo, entao funciona do mesmo jeito e o launcher se organiza sozinho.
-ARQUIVOS=$(find src -name '*.java' 2>/dev/null)
-if [ -z "$ARQUIVOS" ]; then
-  ARQUIVOS=$(find . -maxdepth 1 -name '*.java' ! -name 'InstaladorBCraftOS.java' 2>/dev/null)
-fi
-if [ -z "$ARQUIVOS" ]; then
+# [0/3] Atualiza o codigo ANTES de compilar: baixa do GitHub e troca so os arquivos .java que mudaram.
+# Nao mexe em versoes/, servidores/, usuarios/, mods nem java/. Sem internet, so avisa e segue.
+# Para desligar: crie um arquivo vazio chamado nao-atualizar.txt nesta pasta.
+ATUALIZOU=0
+if [ -f ./Atualizador.java ]; then
+  echo "[0/3] Procurando atualizacoes do codigo..."
+  java Atualizador.java
+  [ $? -eq 10 ] && ATUALIZOU=1
   echo
-  echo "NAO ACHEI os arquivos .java do launcher."
-  echo "Rode primeiro o instalador (pasta BCraftOSInstalador): ./inicializador_do_instalador.sh"
-  pausar; exit 1
 fi
 
-mkdir -p logs
-# shellcheck disable=SC2086
-javac -encoding UTF-8 -d saida $ARQUIVOS > logs/compilacao.log 2>&1
-if [ $? -ne 0 ]; then
-  cat logs/compilacao.log
-  echo
-  echo "DEU ERRO AO COMPILAR. As mensagens estao acima e salvas em logs/compilacao.log"
-  echo "Motivo mais comum: arquivo repetido do tipo BCraftOS1(1).java. Apague e tente de novo."
-  pausar; exit 1
+mkdir -p saida logs
+
+# Usa a pasta src/ (organizada). Se ela ainda nao existe, compila os .java soltos desta pasta:
+# eles ja trazem o "package" certo, entao funciona do mesmo jeito e o launcher se organiza sozinho.
+compilar() {
+  ARQUIVOS=$(find src -name '*.java' 2>/dev/null)
+  if [ -z "$ARQUIVOS" ]; then
+    ARQUIVOS=$(find . -maxdepth 1 -name '*.java' ! -name 'InstaladorBCraftOS.java' ! -name 'Atualizador.java' 2>/dev/null)
+  fi
+  if [ -z "$ARQUIVOS" ]; then
+    echo
+    echo "NAO ACHEI os arquivos .java do launcher."
+    echo "Rode primeiro o instalador (pasta BCraftOSInstalador): ./inicializador_do_instalador.sh"
+    pausar; exit 1
+  fi
+  # shellcheck disable=SC2086
+  javac -encoding UTF-8 -d saida $ARQUIVOS > logs/compilacao.log 2>&1
+}
+
+echo "[1/3] Compilando os arquivos..."
+if ! compilar; then
+  if [ "$ATUALIZOU" = "1" ]; then
+    # A atualizacao trouxe codigo que nao compila: volta para os arquivos de antes e tenta de novo.
+    echo
+    echo "A atualizacao nao compilou. Voltando para a versao anterior..."
+    java Atualizador.java --restaurar
+    ATUALIZOU=0
+    echo "[1/3] Compilando de novo com os arquivos antigos..."
+    if compilar; then
+      echo "      Compilado. O launcher abre na versao anterior (a atualizacao ficou pausada)."
+    else
+      cat logs/compilacao.log
+      echo
+      echo "DEU ERRO AO COMPILAR. As mensagens estao acima e salvas em logs/compilacao.log"
+      pausar; exit 1
+    fi
+  else
+    cat logs/compilacao.log
+    echo
+    echo "DEU ERRO AO COMPILAR. As mensagens estao acima e salvas em logs/compilacao.log"
+    echo "Motivo mais comum: arquivo repetido do tipo BCraftOS1(1).java. Apague e tente de novo."
+    pausar; exit 1
+  fi
 fi
 echo "      Compilado sem erros."
 echo

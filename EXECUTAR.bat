@@ -20,23 +20,40 @@ if exist "%~dp0instalar-jdk.bat" (
 where java >nul 2>&1
 if errorlevel 1 goto SEM_JAVA
 
-echo [1/3] Compilando os arquivos...
-if not exist "saida" mkdir "saida"
-set FONTES=
-for /r "src" %%f in (*.java) do set FONTES=!FONTES! "%%f"
-if "!FONTES!"=="" (
-    rem src ainda nao existe: compila os .java soltos desta pasta (ja trazem o package certo).
-    for %%f in (*.java) do (
-        if /i not "%%f"=="InstaladorBCraftOS.java" set FONTES=!FONTES! "%%f"
-    )
+rem [0/3] Atualiza o codigo ANTES de compilar: baixa do GitHub e troca so os arquivos .java que mudaram.
+rem Nao mexe em versoes, servidores, usuarios, mods nem java. Sem internet, so avisa e segue.
+rem Para desligar: crie um arquivo vazio chamado nao-atualizar.txt nesta pasta.
+set ATUALIZOU=0
+if exist "Atualizador.java" (
+    echo [0/3] Procurando atualizacoes do codigo...
+    java Atualizador.java
+    if errorlevel 10 set ATUALIZOU=1
+    echo.
 )
-if "!FONTES!"=="" goto SEM_FONTES
 
+if not exist "saida" mkdir "saida"
 if not exist "logs" mkdir "logs"
-javac -encoding UTF-8 -d "saida" !FONTES! > "logs\compilacao.log" 2>&1
+
+echo [1/3] Compilando os arquivos...
+call :COMPILAR
+if errorlevel 2 goto SEM_FONTES
 if errorlevel 1 (
-    type "logs\compilacao.log"
-    goto ERRO_COMPILAR
+    if "!ATUALIZOU!"=="1" (
+        echo.
+        echo A atualizacao nao compilou. Voltando para a versao anterior...
+        java Atualizador.java --restaurar
+        set ATUALIZOU=0
+        echo [1/3] Compilando de novo com os arquivos antigos...
+        call :COMPILAR
+        if errorlevel 1 (
+            type "logs\compilacao.log"
+            goto ERRO_COMPILAR
+        )
+        echo       Compilado. O launcher abre na versao anterior ^(a atualizacao ficou pausada^).
+    ) else (
+        type "logs\compilacao.log"
+        goto ERRO_COMPILAR
+    )
 )
 echo       Compilado sem erros.
 echo.
@@ -91,3 +108,18 @@ echo.
 echo O launcher fechou com erro. As mensagens estao logo acima.
 pause
 exit /b 1
+
+:COMPILAR
+rem Devolve errorlevel 0 = compilou, 1 = erro de compilacao, 2 = nao achou arquivos .java
+set FONTES=
+for /r "src" %%f in (*.java) do set FONTES=!FONTES! "%%f"
+if "!FONTES!"=="" (
+    rem src ainda nao existe: compila os .java soltos desta pasta (ja trazem o package certo).
+    for %%f in (*.java) do (
+        if /i not "%%f"=="InstaladorBCraftOS.java" if /i not "%%f"=="Atualizador.java" set FONTES=!FONTES! "%%f"
+    )
+)
+if "!FONTES!"=="" exit /b 2
+javac -encoding UTF-8 -d "saida" !FONTES! > "logs\compilacao.log" 2>&1
+if errorlevel 1 exit /b 1
+exit /b 0

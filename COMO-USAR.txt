@@ -39,3 +39,22 @@ SE DER ERRO DE JAVA
 
 PRECISA BAIXAR O PROJETO DE NOVO?
   java InstaladorBCraftOS
+
+ATUALIZACAO AUTOMATICA DO CODIGO (Atualizador.java)
+  Toda vez que voce abre o launcher (executar.sh / EXECUTAR.bat), ANTES de compilar, ele baixa o codigo
+  do GitHub e troca so os arquivos .java que mudaram. Nao precisa atualizar nada na mao.
+  - NUNCA mexe em versoes/, servidores/, usuarios/, java/, logs/ nem nos seus mods: so em arquivos .java.
+  - Sem internet, ele avisa e o launcher abre normalmente com o que ja tem.
+  - Se voce editou um arquivo, ele NAO sobrescreve o seu (diz quais manteve). Para trocar mesmo assim:
+        java Atualizador.java --forcar
+  - Antes de trocar, guarda os arquivos antigos em backup-codigo/ (os 5 ultimos).
+  - Se o codigo novo nao compilar, ele volta sozinho para a versao anterior e pausa as atualizacoes
+    (para tentar de novo: java Atualizador.java --forcar).
+  - Para DESLIGAR: crie um arquivo vazio chamado nao-atualizar.txt nesta pasta.
+  - Outro repositorio ou branch: crie atualizador.properties com  repo=usuario/repositorio  e  branch=main
+  IMPORTANTE: o codigo que o launcher baixa e o que estiver no GitHub. Envie para la os arquivos novos.
+
+SEUS MODS
+  Coloque os mods em versoes/<Loader>/<versao>/modpacks/<nome do modpack>/. A pasta run/mods dentro do MDK
+  e ESVAZIADA e recopiada a cada vez que voce clica em jogar: nunca deixe mods so la.
+
